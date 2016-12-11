@@ -912,9 +912,9 @@ void ImgView::PartialExpanding(void)
 
 			LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, expanded);
 
-			freePtX = (x-zoomPort[0])/zoomFactor+targetPort[0];
+			freePtX = (col-zoomPort[0])/zoomFactor+targetPort[0];
 			freePtX /= 3;
-			freePtY = (y-zoomPort[2])/zoomFactor+targetPort[2];
+			freePtY = (row-zoomPort[2])/zoomFactor+targetPort[2];
 			freePtY /= 3;
 			
 			printf("minimun path tree is finished\n");
@@ -2045,12 +2045,22 @@ int ImgView::handle(int c)
 					 * apply brush here, e.g., updating imgBuf by attenuating origImg with brushOpacity,
 					 * and update brushSelection here also.
 					 */
+					for (int i = -brushSize; i < brushSize + 1; ++i)
+					{
+						for (int j = -brushSize; j < brushSize + 1; ++j)
+						{
+							if (i*i + j*j <= brushRadius2) {
+								brushSelection[(cntY + j)*imgWidth + cntX + i] = 1;
 
-					printf("selecting region by brush: to be implemented in imgView.cpp\n");
+							}
+						}
+					}
+					printf("selecting region by brush (1): to be implemented in ImgView.cpp\n");
 					/******************************************************/
-
+					UpdateImgBufOpacity();
 					UpdateViewBuffer();
 					redraw();
+
 				}
 			}
 		}

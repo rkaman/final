@@ -158,7 +158,7 @@ struct RGBA
 
 // Simple error handling class
 
-struct CError : public exception
+struct CError : public std::exception
 {
     CError(const char* msg)                 { strcpy(message, msg); }
     CError(const char* fmt, int d)          { sprintf(message, fmt, d); }

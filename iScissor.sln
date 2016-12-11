@@ -1,21 +1,22 @@
-Microsoft Visual Studio Solution File, Format Version 7.00
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iScissor", "iScissor.vcproj", "{4C61F9EF-EE0D-46A3-A777-A412982EE87C}"
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iScissor", "iScissor.vcxproj", "{F1873C0F-B678-4908-A220-64FD655A755F}"
 EndProject
 Global
-	GlobalSection(SolutionConfiguration) = preSolution
-		ConfigName.0 = Debug
-		ConfigName.1 = Release
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
 	EndGlobalSection
-	GlobalSection(ProjectDependencies) = postSolution
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1873C0F-B678-4908-A220-64FD655A755F}.Debug|x86.ActiveCfg = Debug|Win32
+		{F1873C0F-B678-4908-A220-64FD655A755F}.Debug|x86.Build.0 = Debug|Win32
+		{F1873C0F-B678-4908-A220-64FD655A755F}.Release|x86.ActiveCfg = Release|Win32
+		{F1873C0F-B678-4908-A220-64FD655A755F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
-	GlobalSection(ProjectConfiguration) = postSolution
-		{4C61F9EF-EE0D-46A3-A777-A412982EE87C}.Debug.ActiveCfg = Debug|Win32
-		{4C61F9EF-EE0D-46A3-A777-A412982EE87C}.Debug.Build.0 = Debug|Win32
-		{4C61F9EF-EE0D-46A3-A777-A412982EE87C}.Release.ActiveCfg = Release|Win32
-		{4C61F9EF-EE0D-46A3-A777-A412982EE87C}.Release.Build.0 = Release|Win32
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-	EndGlobalSection
-	GlobalSection(ExtensibilityAddIns) = postSolution
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

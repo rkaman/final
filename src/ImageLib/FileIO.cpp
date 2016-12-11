@@ -270,7 +270,7 @@ void WriteFileTGA(CImage img, const char* filename)
 void ReadFile (CImage& img, const char* filename)
 {
     // Determine the file extension
-    char *dot = strrchr(filename, '.');
+    const char *dot = strrchr(filename, '.');
     if (strcmp(dot, ".tga") == 0 || strcmp(dot, ".tga") == 0)
     {
         if ((&img.PixType()) == 0)
@@ -287,7 +287,7 @@ void ReadFile (CImage& img, const char* filename)
 void WriteFile(CImage& img, const char* filename)
 {
     // Determine the file extension
-    char *dot = strrchr(filename, '.');
+    const char *dot = strrchr(filename, '.');
     if (strcmp(dot, ".tga") == 0 || strcmp(dot, ".tga") == 0)
     {
         if (img.PixType() == typeid(uchar))

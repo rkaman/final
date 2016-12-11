@@ -36,8 +36,26 @@ void image_filter(double *rsltImg, const unsigned char *origImg, const unsigned 
 			double scale, double offset)
 {
 	// HINT: this function should make calls to pixel_filter
-	printf("image_filter: to be done in correlation.cpp\n");
+	for (int i = 0; i < imgWidth; i++) 
+	{
+		for (int j = 0; j < imgHeight; j++) 
+		{
+			double pixel[3];
+		    pixel[0] = origImg[3*(j*imgWidth+i)];
+			pixel[1] = origImg[3*(j*imgWidth+i)+1];
+			pixel[2] = origImg[3*(j*imgWidth+i)+2];
+			if (selection == NULL || selection[j*imgWidth + i] == 1) 
+			{
+				pixel_filter(pixel, i, j, origImg, imgWidth, imgHeight, kernel, knlWidth, knlHeight, scale, offset);
+			}
+			rsltImg[3*(j*imgWidth+i)] = pixel[0];
+			rsltImg[3*(j*imgWidth+i)+1] = pixel[1];
+			rsltImg[3*(j*imgWidth+i)+2] = pixel[2];
+		}
+	}
+
 }
+
 
 /************************ END OF TBD 2 **************************/
 
@@ -72,8 +90,32 @@ void pixel_filter(double rsltPixel[3], int x, int y, const unsigned char *origIm
 			  const double *kernel, int knlWidth, int knlHeight,
 			  double scale, double offset)
 {
-	printf("pixel_filter: to be done in correlation.cpp\n");
-	
+
+	for (int i = 0; i < 3; ++i)
+	{
+		for (int j = 0; j < knlWidth; ++j)
+		{
+			for (int k = 0; k < knlHeight; ++k)
+			{
+				int colInd = j*x - (knlWidth - 1) / 2;
+				if (colInd >= imgWidth || colInd < 0)
+				{
+					colInd = x;
+				}
+				int rowInd = k*y - (knlHeight - 1) / 2;
+				if (rowInd >= imgHeight || rowInd < 0)
+				{
+					rowInd = y;
+				}
+				int kind = k*knlWidth + j;
+				int ind = 3 * (rowInd * imgWidth + colInd) + i;
+				rsltPixel[i] += kernel[kind] * origImg[ind];
+			}
+		}
+
+		rsltPixel[i] = (rsltPixel[i] / scale) + offset;
+	}
+//	printf("pixel_filter: to be done in correlation.cpp\n");
 }
 
 /************************ END OF TBD 3 **************************/

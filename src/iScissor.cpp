@@ -24,10 +24,46 @@ inline unsigned char PIXEL(const unsigned char *p, int i, int j, int c, int widt
 
 void InitNodeBuf(Node *nodes, const unsigned char *img, int imgWidth, int imgHeight)
 {
+	double k[9] = { 0.111, 0.111, 0.111, 0.111, 0.111, 0.111, 0.111, 0.111, 0.111 };
+
 	// HINT: This function MUST make calls to pixel_filter, passing the appropropriate kernels
 	// of the eight you defined in iScissor.h. This is a *requirement* not an option.
 	printf("InitNodeBuf in iScissor.cpp: to be implemented!\n");
+	double *newImgDoub = new double[imgWidth * imgHeight * 3];
+	image_filter(newImgDoub, img, NULL, imgWidth, imgHeight, k, 3, 3, 1, 0);
+	unsigned char *newImg = new unsigned char[imgWidth*imgHeight * 3];
+	double max = 0;
+	for (int i = 0; i < imgWidth; i++) 
+	{
+		for (int j = 0; j < imgHeight; j++)
+		{
+			NODE(nodes, i, j, imgWidth).column = i;
+			NODE(nodes, i, j, imgWidth).row = j;
+			for (int d = 0; d < 8; d++) 
+			{
+				double pixel[] = { 0.0, 0.0, 0.0 };
+				pixel_filter(pixel, i, j, newImg, imgWidth, imgHeight, kernels[d], 3, 3, 1, 0);
+				double avg = (abs(pixel[0]) + abs(pixel[1]) + abs(pixel[2])) / 3.0;
+				if (d % 2 == 1)
+				{
+					avg = SQRT2 * avg;
+				}
+				if (avg > max)
+				{
+					max = avg;
+				}
+				NODE(nodes, i, j, imgWidth).linkCost[d] = avg;
+			}
+		}
+	}
+	for (int i = 0; i < imgWidth; i++) {
+		for (int j = 0; j < imgHeight; j++) {
+			for (int d = 0; d < 8; d++) {
+				NODE(nodes, i, j, imgWidth).linkCost[d] = max - NODE(nodes, i, j, imgWidth).linkCost[d];
 
+			}
+		}
+	}
 }
 
 /************************TO DO 4***************************
@@ -44,9 +80,56 @@ void InitNodeBuf(Node *nodes, const unsigned char *img, int imgWidth, int imgHei
  *		the prevNode field of each node to its predecessor along the minimum 
  *		cost path from the seed to that node.
  */
-
+int gseedX, gseedY;
 void LiveWireDP(int seedX, int seedY, Node *nodes, int width, int height, const unsigned char *selection, int numExpanded)
 {
+	gseedX = seedX;
+	gseedY = seedY;
+	CTypedPtrHeap<Node> *pq = new CTypedPtrHeap<Node>();
+	for (int i = 0; i < width; ++i)
+	{
+		for (int j = 0; j < height; ++j)
+		{
+			NODE(nodes, i, j, width).state = INITIAL;
+			NODE(nodes, i, j, width).prevNode = NULL;
+			NODE(nodes, i, j, width).totalCost = 0;
+		}
+	}
+	Node seedNode = NODE(nodes, seedX, seedY, width);
+	pq->Insert(&seedNode);
+	int n = 0;
+	while (!(pq->IsEmpty()) && n < numExpanded)
+	{
+		Node& temp = *pq->ExtractMin();
+		temp.state = EXPANDED;
+		for (int i = 0; i < 8; ++i)
+		{
+			int offsetX, offsetY;
+			temp.nbrNodeOffset(offsetX, offsetY, i);
+
+			int neighborCol = offsetX + temp.column;
+			int neighborRow = offsetY + temp.row;
+
+			if (neighborRow < 0 || neighborRow >= height || neighborCol < 0 || neighborCol >= width || (selection != NULL && selection[neighborRow*width + neighborCol] == 0)) continue;
+			Node& r = NODE(nodes, neighborCol, neighborRow, width);
+			double len = i % 2 == 1 ? 1 : SQRT2;
+			if (r.state == ACTIVE && (temp.totalCost + temp.linkCost[i] < r.totalCost) || (temp.totalCost + temp.linkCost[i] == r.totalCost && r.distance > temp.distance + len))
+			{			
+					r.totalCost = temp.totalCost + temp.linkCost[i];
+					r.prevNode = &temp;
+					r.distance = temp.distance + len;				
+			}
+			if (r.state == INITIAL)
+			{
+				r.totalCost = temp.totalCost + temp.linkCost[i];
+				r.state = ACTIVE;
+				r.prevNode = &temp;
+				r.distance = temp.distance + len;
+				pq->Insert(&r);
+			}
+			++n;
+		}
+	}
 	printf("LiveWireDp in iScissor.cpp: to be implemented!\n");
 
 }
@@ -68,7 +151,15 @@ void LiveWireDP(int seedX, int seedY, Node *nodes, int width, int height, const 
 void MinimumPath(CTypedPtrDblList <Node> *path, int freePtX, int freePtY, Node *nodes, int width, int height)
 {
 	printf("MinimumPath in iScissor.cpp: to be implemented!\n");
+	Node* seed = &NODE(nodes, gseedX, gseedY, width);
+	Node* curNode = &NODE(nodes, freePtX, freePtY, width);
 
+	path->AddHead(curNode);
+	while (curNode->prevNode) {
+		path->AddHead(curNode->prevNode);
+		curNode = curNode->prevNode;
+	}
+	path->AddHead(seed);
 }
 
 /************************An Extra Credit***************************
