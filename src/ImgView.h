@@ -43,6 +43,7 @@ protected:
 	unsigned char *curImgChar;
 	Node *nodeBuf;
 	int imgWidth, imgHeight;
+	int minX, minY, maxX, maxY;
 
 	//pixelNodes:			an image of 3*imgWidth by 3*imgHeight,
 	//						represents only pixel colors at the center of each 3 by 3 unit.
@@ -68,7 +69,10 @@ protected:
 												//for a square brush, brushSize is half of the side length
 	int brushRadius2;							//brushRadius2 = brushSize * brushSize
 												//the default brush is a round brush of size 10
-
+	double point1, point2, point3, point4;
+	double curvePoints[10] = { 0.0,0.0,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 };
+	double curveTotal;
+	double curveScale = 2;
 	double brushOpacity;						//brush selected area can be rendered with opacity, ranging in [0,1]
 												//the default opacity if 1.0, which is transparent. 
 												//the opacity can be adusted in brush config pannel.
@@ -169,7 +173,7 @@ public:
 
 	//called if help menu item is selected.
 	void AboutMe();
-
+	void updateBrushSelection(int x, int y);
 protected:
 
 	//the following functions help to implement file I/O, memory allocate/copy/free

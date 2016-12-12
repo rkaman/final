@@ -10,8 +10,10 @@
 class HelpPageUI {
 public:
   HelpPageUI();
+ // ~HelpPageUI();
   Fl_Window *mainWindow;
   Fl_Output *helpText;
+  //Fl_Text_Buffer* helpTextBuffer;
 private:
   inline void cb_OK_i(Fl_Button*, void*);
   static void cb_OK(Fl_Button*, void*);

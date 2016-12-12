@@ -25,10 +25,25 @@ private:
   inline void cb_square_i(Fl_Check_Button*, void*);
   static void cb_square(Fl_Check_Button*, void*);
 public:
-  Fl_Value_Slider *brushSize;
+  Fl_Value_Slider *point1;
 private:
-  inline void cb_brushSize_i(Fl_Value_Slider*, void*);
-  static void cb_brushSize(Fl_Value_Slider*, void*);
+  inline void cb_point1_i(Fl_Value_Slider*, void*);
+  static void cb_point1(Fl_Value_Slider*, void*);
+public:
+  Fl_Value_Slider *point2;
+private:
+  inline void cb_point2_i(Fl_Value_Slider*, void*);
+  static void cb_point2(Fl_Value_Slider*, void*);
+public:
+  Fl_Value_Slider *point3;
+private:
+  inline void cb_point3_i(Fl_Value_Slider*, void*);
+  static void cb_point3(Fl_Value_Slider*, void*);
+public:
+  Fl_Value_Slider *point4;
+private:
+  inline void cb_point4_i(Fl_Value_Slider*, void*);
+  static void cb_point4(Fl_Value_Slider*, void*);
 public:
   Fl_Value_Slider *brushOpacity;
 private:

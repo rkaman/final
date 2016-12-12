@@ -16,11 +16,29 @@ void BrushConfigUI::cb_square(Fl_Check_Button* o, void* v) {
   ((BrushConfigUI*)(o->parent()->parent()->user_data()))->cb_square_i(o,v);
 }
 
-inline void BrushConfigUI::cb_brushSize_i(Fl_Value_Slider*, void*) {
+inline void BrushConfigUI::cb_point1_i(Fl_Value_Slider*, void*) {
   imgView->UpdateBrushConfig();
 }
-void BrushConfigUI::cb_brushSize(Fl_Value_Slider* o, void* v) {
-  ((BrushConfigUI*)(o->parent()->user_data()))->cb_brushSize_i(o,v);
+void BrushConfigUI::cb_point1(Fl_Value_Slider* o, void* v) {
+  ((BrushConfigUI*)(o->parent()->user_data()))->cb_point1_i(o,v);
+}
+inline void BrushConfigUI::cb_point2_i(Fl_Value_Slider*, void*) {
+	imgView->UpdateBrushConfig();
+}
+void BrushConfigUI::cb_point2(Fl_Value_Slider* o, void* v) {
+	((BrushConfigUI*)(o->parent()->user_data()))->cb_point2_i(o, v);
+}
+inline void BrushConfigUI::cb_point3_i(Fl_Value_Slider*, void*) {
+	imgView->UpdateBrushConfig();
+}
+void BrushConfigUI::cb_point3(Fl_Value_Slider* o, void* v) {
+	((BrushConfigUI*)(o->parent()->user_data()))->cb_point3_i(o, v);
+}
+inline void BrushConfigUI::cb_point4_i(Fl_Value_Slider*, void*) {
+	imgView->UpdateBrushConfig();
+}
+void BrushConfigUI::cb_point4(Fl_Value_Slider* o, void* v) {
+	((BrushConfigUI*)(o->parent()->user_data()))->cb_point4_i(o, v);
 }
 
 inline void BrushConfigUI::cb_brushOpacity_i(Fl_Value_Slider*, void*) {
@@ -46,10 +64,10 @@ void BrushConfigUI::cb_Close(Fl_Button* o, void* v) {
 
 BrushConfigUI::BrushConfigUI() {
   Fl_Window* w;
-  { Fl_Window* o = mainWindow = new Fl_Window(234, 116, "Brush Property");
+  { Fl_Window* o = mainWindow = new Fl_Window(234, 234, "Curve Points");
     w = o;
     o->user_data((void*)(this));
-    { Fl_Group* o = new Fl_Group(5, 25, 120, 55, "Brush Type:");
+    /*{ Fl_Group* o = new Fl_Group(5, 25, 120, 55, "Brush Type:");
       o->box(FL_ENGRAVED_FRAME);
       { Fl_Round_Button* o = round = new Fl_Round_Button(9, 30, 111, 25, "Round Brush");
         o->type(102);
@@ -62,27 +80,43 @@ BrushConfigUI::BrushConfigUI() {
         o->callback((Fl_Callback*)cb_square);
       }
       o->end();
-    }
-    { Fl_Value_Slider* o = brushSize = new Fl_Value_Slider(140, 25, 90, 20, "Brush Size:");
-      o->type(1);
-      o->maximum(20);
-      o->step(1);
-      o->value(10);
-      o->callback((Fl_Callback*)cb_brushSize);
+    }*/
+    { Fl_Value_Slider* o = point1 = new Fl_Value_Slider(40, 20, 20, 90, "Point 1:");
+      o->type(0);
+	  o->maximum(0);
+	  o->minimum(1);
+      o->callback((Fl_Callback*)cb_point1);
       o->align(FL_ALIGN_TOP);
       o->when(FL_WHEN_RELEASE);
     }
-    { Fl_Value_Slider* o = brushOpacity = new Fl_Value_Slider(140, 60, 90, 19, "Brush Opacity:");
-      o->type(1);
-      o->value(1);
-      o->callback((Fl_Callback*)cb_brushOpacity);
+    { Fl_Value_Slider* o = point2 = new Fl_Value_Slider(90, 20, 19, 90, "Point 2:");
+      o->type(0);
+	  o->maximum(0);
+	  o->minimum(1);
+      o->callback((Fl_Callback*)cb_point2);
       o->align(FL_ALIGN_TOP);
       o->when(FL_WHEN_RELEASE);
     }
-    { Fl_Button* o = new Fl_Button(5, 90, 107, 25, "Clean All");
+	{ Fl_Value_Slider* o = point3 = new Fl_Value_Slider(140, 20, 19, 90, "Point 3:");
+	o->type(0);
+	o->maximum(0);
+	o->minimum(1);
+	o->callback((Fl_Callback*)cb_point3);
+	o->align(FL_ALIGN_TOP);
+	o->when(FL_WHEN_RELEASE);
+	}
+	{ Fl_Value_Slider* o = point4 = new Fl_Value_Slider(190, 20, 19, 90, "Point 4:");
+	o->type(0);
+	o->maximum(0);
+	o->minimum(1);
+	o->callback((Fl_Callback*)cb_point4);
+	o->align(FL_ALIGN_TOP);
+	o->when(FL_WHEN_RELEASE);
+	}
+    { Fl_Button* o = new Fl_Button(5,200, 107, 25, "Clean All");
       o->callback((Fl_Callback*)cb_Clean);
     }
-    { Fl_Button* o = new Fl_Button(128, 90, 102, 25, "Close");
+    { Fl_Button* o = new Fl_Button(128,200, 102, 25, "Close");
       o->callback((Fl_Callback*)cb_Close);
     }
     o->end();

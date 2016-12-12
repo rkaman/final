@@ -9,7 +9,7 @@ void HelpPageUI::cb_OK(Fl_Button* o, void* v) {
   ((HelpPageUI*)(o->parent()->user_data()))->cb_OK_i(o,v);
 }
 
-HelpPageUI::HelpPageUI() {
+HelpPageUI::HelpPageUI()/* : helpTextBuffer(new Fl_Text_Buffer)*/ {
   Fl_Window* w;
   { Fl_Window* o = mainWindow = new Fl_Window(390, 366, "About my image filter :)");
     w = o;
@@ -25,7 +25,9 @@ HelpPageUI::HelpPageUI() {
     o->resizable(o);
   }
 }
-
+/*HelpPageUI::~HelpPageUI() {
+	delete helpTextBuffer;
+}*/
 void HelpPageUI::show() {
   mainWindow->show();
 }

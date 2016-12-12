@@ -82,7 +82,7 @@ Fl_Menu_Item ImgFilterUI::menu_mainMenu[] = {
  {"&Exit", 0,  (Fl_Callback*)ImgFilterUI::cb_Exit, 0, 0, 0, 0, 14, 0},
  {0},
  {"&Tools", 0,  0, 0, 64, 0, 0, 14, 0},
- {"&Brush", 0,  (Fl_Callback*)ImgFilterUI::cb_Brush, 0, 0, 0, 0, 14, 0},
+ {"&Curve", 0,  (Fl_Callback*)ImgFilterUI::cb_Brush, 0, 0, 0, 0, 14, 0},
  {"&Scissor", 0,  (Fl_Callback*)ImgFilterUI::cb_Scissor, 0, 0, 0, 0, 14, 0},
  {"&Filter", 0,  (Fl_Callback*)ImgFilterUI::cb_Filter, 0, 0, 0, 0, 14, 0},
  {0},

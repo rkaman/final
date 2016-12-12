@@ -1,55 +1,70 @@
 #include "ImgView.h"
 #include "iScissor.h"
 
-ImgView::ImgView(int x, int y, int w, int h, const char *label) : Fl_Double_Window(x,y,w,h,label)
+
+ImgView::ImgView(int x, int y, int w, int h, const char *label) : Fl_Double_Window(x, y, w, h, label)
 {
 	imgBuf = NULL;
 	origImg = NULL;
 	curImg = NULL;
 	curImgChar = NULL;
 
+
 	imgBuf = NULL;
 	imgLeft = 0;
 	imgTop = 0;
 
+
 	fltDesignUI = new FltDesignUI;
 	fltDesignUI->imgView = this;
 
+
 	int i;
-	for (i=0;i<FLT_HEIGHT*FLT_WIDTH;i++)
+	for (i = 0; i<FLT_HEIGHT*FLT_WIDTH; i++)
 	{
 		fltKernel[i] = 0;
 	}
-	fltKernel[(FLT_HEIGHT/2)*FLT_WIDTH+(FLT_HEIGHT/2)]=1;
+	fltKernel[(FLT_HEIGHT / 2)*FLT_WIDTH + (FLT_HEIGHT / 2)] = 1;
 	scale = 1;
 	offset = 0;
 
+
 	InitFltDesignUI();
+
 
 	fltDesignUI->image->value(1);
 	fltDesignUI->selection->value(0);
 
+
 	scissorPanelUI = new ScissorPanelUI();
-	scissorPanelUI->imgView = this;	
-	scissorPanelUI->expanded->range(0,0);
+	scissorPanelUI->imgView = this;
+	scissorPanelUI->expanded->range(0, 0);
 	scissorPanelUI->expanded->value(0);
 	scissorPanelUI->expanded->deactivate();
 
+	point1 = point2 = point3 = point4 = 0.0;
 	brushSelection = NULL;
 	brushType = ROUND_BRUSH;
-	brushSize = 20;
+	brushSize = 1;
 	brushRadius2 = brushSize*brushSize;
+	
 
-	brushOpacity = 0.5;	
+	brushOpacity = 0.5;
+
 
 	brushConfigUI = new BrushConfigUI;
 	brushConfigUI->imgView = this;
 
-	brushConfigUI->round->value(1);
-	brushConfigUI->square->value(0);
-	brushConfigUI->brushSize->range(1,2*brushSize);
-	brushConfigUI->brushSize->value(brushSize);
-	brushConfigUI->brushOpacity->value(brushOpacity);
+
+//	brushConfigUI->round->value(1);
+//	brushConfigUI->square->value(0);
+//	brushConfigUI->brushSize->range(1, 2 * brushSize);
+	brushConfigUI->point1->value(point1);
+	brushConfigUI->point1->value(point2);
+	brushConfigUI->point1->value(point3);
+	brushConfigUI->point1->value(point4);
+//	brushConfigUI->brushOpacity->value(brushOpacity);
+
 
 	helpPageUI = new HelpPageUI();
 	char helpInfo[2048];
@@ -58,6 +73,7 @@ ImgView::ImgView(int x, int y, int w, int h, const char *label) : Fl_Double_Wind
 	helpPageUI->mainWindow->resizable(helpPageUI->helpText);
 }
 
+
 void ImgView::FreeBuffer(void)
 {
 	if (imgBuf)
@@ -65,35 +81,45 @@ void ImgView::FreeBuffer(void)
 		delete[] origImg;
 		delete[] imgBuf;
 
+
 		delete[] brushSelection;
 		delete[] costGraph;
 		delete[] pixelNodes;
 
+
 		delete[] viewBuf;
+
 
 		delete[] nodeBuf;
 
+
 		origImg = NULL;
-		imgBuf = NULL;		
+		imgBuf = NULL;
+
 
 		brushSelection = NULL;
 		costGraph = NULL;
 		pixelNodes = NULL;
 
+
 		viewBuf = NULL;
+
 
 		nodeBuf = NULL;
 
+
 		int i;
-		for (i=0;i<contours.GetSize();i++)
+		for (i = 0; i<contours.GetSize(); i++)
 		{
 			contours[i]->FreePtrs();
 		}
 		contours.FreePtrs();
 
+
 		currentCntr.FreePtrs();
 	}
 }
+
 
 void ImgView::HideAll(void)
 {
@@ -102,19 +128,23 @@ void ImgView::HideAll(void)
 	scissorPanelUI->hide();
 }
 
+
 ImgView::~ImgView()
 {
 	FreeBuffer();
 
-//	delete fltDesignUI;
+
+	//	delete fltDesignUI;
 	delete brushConfigUI;
 	delete helpPageUI;
 	delete scissorPanelUI;
 }
 
+
 void ImgView::OpenImage(void)
 {
 	char *filename = fl_file_chooser("choose a targa file", "*.tga", 0);
+
 
 	if (filename)
 	{
@@ -122,101 +152,124 @@ void ImgView::OpenImage(void)
 	}
 }
 
+
 void ImgView::OpenImage(const char *filename)
 {
-	int i,j;
+	int i, j;
 
-	FreeBuffer();	
+	maxX = maxY = 0;
+	FreeBuffer();
+
 
 	CByteImage rick;
-	ReadFile(rick,filename);
+	ReadFile(rick, filename);
+
 
 	imgWidth = rick.Shape().width;
 	imgHeight = rick.Shape().height;
 
+	minX = imgWidth;
+	minY = imgHeight;
 	graphWidth = imgWidth * 3;
 	graphHeight = imgHeight * 3;
 
+
 	int numNodes = imgWidth * imgHeight;
-	int imgSize = imgWidth * imgHeight * 3;	
+	int imgSize = imgWidth * imgHeight * 3;
 	int graphSize = graphWidth * graphHeight * 3;
 
+
 	brushSelection = new unsigned char[numNodes];
-	memset(brushSelection,0,numNodes*sizeof(unsigned char));
-	
-	origImg = new unsigned char [imgSize];
-	curImg = new double [imgSize];
-	curImgChar = new unsigned char [imgSize];
-	
+	memset(brushSelection, 0, numNodes * sizeof(unsigned char));
+
+	origImg = new unsigned char[imgSize];
+	curImg = new double[imgSize];
+	curImgChar = new unsigned char[imgSize];
 
 
-	imgBuf = new unsigned char [imgSize];
-	costGraph = new unsigned char [graphSize];
-	pixelNodes = new unsigned char [graphSize];
 
-	for (j=0;j<imgHeight;j++)
+
+
+	imgBuf = new unsigned char[imgSize];
+	costGraph = new unsigned char[graphSize];
+	pixelNodes = new unsigned char[graphSize];
+
+
+	for (j = 0; j<imgHeight; j++)
 	{
-		for (i=0;i<imgWidth;i++)
+		for (i = 0; i<imgWidth; i++)
 		{
-			int imgIndex = 3*(j*imgWidth+i);
-			int graphIndex = 3*((3*j+1)*graphWidth+(3*i+1));
+			int imgIndex = 3 * (j*imgWidth + i);
+			int graphIndex = 3 * ((3 * j + 1)*graphWidth + (3 * i + 1));
 			int x = i;
-			int y = imgHeight-1-j;
+			int y = imgHeight - 1 - j;
 
-			for (int c = 0;c<3;c++)
+
+			for (int c = 0; c<3; c++)
 			{
 				//costGraph[graphIndex+c] = 
-				pixelNodes[graphIndex +c] = 
-				imgBuf[imgIndex+c] = origImg[imgIndex+c] = rick.Pixel(x,y,2-c);
-					
-				pixelNodes[graphIndex+3*(+1)			+c] = 
-				pixelNodes[graphIndex+3*(-graphWidth+1)+c] = 
-				pixelNodes[graphIndex+3*(-graphWidth)	+c] = 
-				pixelNodes[graphIndex+3*(-graphWidth-1)+c] = 
-				pixelNodes[graphIndex+3*(-1)			+c] = 
-				pixelNodes[graphIndex+3*(+graphWidth-1)+c] = 
-				pixelNodes[graphIndex+3*(+graphWidth)	+c] = 
-				pixelNodes[graphIndex+3*(+graphWidth+1)+c] = 0;					 
-			}			
+				pixelNodes[graphIndex + c] =
+					imgBuf[imgIndex + c] = origImg[imgIndex + c] = rick.Pixel(x, y, 2 - c);
+
+				pixelNodes[graphIndex + 3 * (+1) + c] =
+					pixelNodes[graphIndex + 3 * (-graphWidth + 1) + c] =
+					pixelNodes[graphIndex + 3 * (-graphWidth) + c] =
+					pixelNodes[graphIndex + 3 * (-graphWidth - 1) + c] =
+					pixelNodes[graphIndex + 3 * (-1) + c] =
+					pixelNodes[graphIndex + 3 * (+graphWidth - 1) + c] =
+					pixelNodes[graphIndex + 3 * (+graphWidth) + c] =
+					pixelNodes[graphIndex + 3 * (+graphWidth + 1) + c] = 0;
+			}
 		}
 	}
-	
-	for (int i=0; i<imgSize; i++) {
+
+	for (int i = 0; i<imgSize; i++) {
 		curImgChar[i] = origImg[i];
 		curImg[i] = double(origImg[i]);
 	}
 
 
+
+
 	nodeBuf = new Node[numNodes]();
-	
-	InitNodeBuf(nodeBuf,imgBuf,imgWidth,imgHeight);
+
+	InitNodeBuf(nodeBuf, imgBuf, imgWidth, imgHeight);
 	MakeCostGraph(costGraph, nodeBuf, imgBuf, imgWidth, imgHeight);
 
-	imgLeft = -imgWidth/2;
-	imgTop = -imgHeight/2;
+
+	imgLeft = -imgWidth / 2;
+	imgTop = -imgHeight / 2;
+
 
 	zoomFactor = 1;
 
-	AllocateViewBuffer(this->w(),this->h());
+
+	AllocateViewBuffer(this->w(), this->h());
+
 
 	drawMode = IMAGE_WITH_CONTOUR;
 	scissorPanelUI->contour->value(1);
-	scissorPanelUI->expanded->range(0,imgWidth*imgHeight);
-	scissorPanelUI->expanded->lstep(imgWidth*imgHeight/10);
+	scissorPanelUI->expanded->range(0, imgWidth*imgHeight);
+	scissorPanelUI->expanded->lstep(imgWidth*imgHeight / 10);
 	scissorPanelUI->expanded->value(imgWidth*imgHeight);
 	scissorPanelUI->expanded->deactivate();
+
 
 	brushSelPtr = NULL;
 	scissorPanelUI->whole->value(1);
 
-	UpdateViewBuffer();	
+
+	UpdateViewBuffer();
+
 
 	redraw();
 }
 
+
 void ImgView::SaveContour(void)
 {
 	char *filename = fl_file_chooser("choose a targa file", "*.tga", 0);
+
 
 	if (filename)
 	{
@@ -224,171 +277,237 @@ void ImgView::SaveContour(void)
 	}
 }
 
+
 void ImgView::SaveContour(const char *filename)
 {
-	CByteImage rick(imgWidth, imgHeight, 3);	
+	CByteImage rick(imgWidth, imgHeight, 3);
 
-	int i,j;	
+
+	int i, j;
+
 
 	//our buffer is in R, G, B order from top to bottom and from left to right;
 	//Rick's .tga file format is in B,G,R order from bottom to top and from left to right;
-	for (j=0;j<imgHeight;j++)
+	for (j = 0; j<imgHeight; j++)
 	{
-		for (i=0;i<imgWidth;i++)
+		for (i = 0; i<imgWidth; i++)
 		{
-			int index = 3*(j*imgWidth+i);
+			int index = 3 * (j*imgWidth + i);
 			int x = i;
-			int y = imgHeight-1-j;
-			rick.Pixel(x,y,0) = origImg[index+2];
-			rick.Pixel(x,y,1) = origImg[index+1];
-			rick.Pixel(x,y,2) = origImg[index+0];
+			int y = imgHeight - 1 - j;
+			rick.Pixel(x, y, 0) = origImg[index + 2];
+			rick.Pixel(x, y, 1) = origImg[index + 1];
+			rick.Pixel(x, y, 2) = origImg[index + 0];
 		}
 	}
 
+
 	int k;
 
-	for (k=0;k<contours.GetSize();k++)
+
+	for (k = 0; k<contours.GetSize(); k++)
 	{
 		CTypedPtrDblElement <Seed> *seedEle = contours[k]->GetHeadPtr();
+
 
 		while (!contours[k]->IsSentinel(seedEle))
 		{
 			Seed *seed = seedEle->Data();
 			int x = seed->x;
-			int y = imgHeight-1-seed->y;
-			rick.Pixel(x,y,0) = PATH_COLOR[2];
-			rick.Pixel(x,y,1) = PATH_COLOR[1];
-			rick.Pixel(x,y,2) = PATH_COLOR[0];
+			int y = imgHeight - 1 - seed->y;
+			rick.Pixel(x, y, 0) = PATH_COLOR[2];
+			rick.Pixel(x, y, 1) = PATH_COLOR[1];
+			rick.Pixel(x, y, 2) = PATH_COLOR[0];
+
 
 			seedEle = seedEle->Next();
 		}
 	}
 
-	WriteFile(rick,filename);	
+
+	WriteFile(rick, filename);
 }
+
 
 void ImgView::SaveMask(void)
 {
 	char *filename = fl_file_chooser("choose a targa file", "*.tga", 0);
+
 
 	if (filename)
 	{
 		SaveMask(filename);
 	}
 
+
 }
+
 
 void ImgView::SaveMask(const char *filename)
 {
-	CByteImage rick(imgWidth, imgHeight, 3);	
-	
-	unsigned char *maskBuf = new unsigned char [3*imgWidth*imgHeight];
-	memset(maskBuf,0,3*imgWidth*imgHeight*sizeof(unsigned char));
+	CByteImage rick(imgWidth, imgHeight*2, 3);
+	double rem = 0;
+	bool flag = false;
+	int addition = 0;
+	unsigned char *maskBuf = new unsigned char[6 * imgWidth*imgHeight];
+	memset(maskBuf, 0, 3 * imgWidth*imgHeight*2 * sizeof(unsigned char));
 
-	int i,j,k;	
 
-	unsigned char *cntrBuf = new unsigned char [3*imgWidth*imgHeight];	
+	int i, j, k;
 
-	for (k=0;k<contours.GetSize();k++)
+
+	unsigned char *cntrBuf = new unsigned char[3 * imgWidth*imgHeight];
+
+
+	for (k = 0; k<contours.GetSize(); k++)
 	{
 		if (contours[k]->IsCircular())
-		{			
-			memset(cntrBuf,0,3*imgWidth*imgHeight*sizeof(unsigned char));
+		{
+			memset(cntrBuf, 0, 3 * imgWidth*imgHeight * sizeof(unsigned char));
+
 
 			CTypedPtrDblElement <Seed> *seedEle = contours[k]->GetHeadPtr();
+
 
 			Seed *seed = seedEle->Data();
 			int lastRow = seed->y;
 			int lastCol = seed->x;
 			int bufIndex;
 
+
 			seedEle = seedEle->Next();
+
 
 			while (!contours[k]->IsSentinel(seedEle))
 			{
 				seed = seedEle->Data();
 				if (lastRow<seed->y)
 				{
-					bufIndex = 3*(lastRow*imgWidth+lastCol);
-					cntrBuf[bufIndex+0]++;
-					cntrBuf[bufIndex+1]++;
-					cntrBuf[bufIndex+2]++;
+					bufIndex = 3 * (lastRow*imgWidth + lastCol);
+					cntrBuf[bufIndex + 0]++;
+					cntrBuf[bufIndex + 1]++;
+					cntrBuf[bufIndex + 2]++;
+
 
 					lastRow = seed->y;
 					lastCol = seed->x;
 				}
 				else if (lastRow>seed->y)
 				{
-					bufIndex = 3*(seed->y*imgWidth+seed->x);
-					cntrBuf[bufIndex+0]++;
-					cntrBuf[bufIndex+1]++;
-					cntrBuf[bufIndex+2]++;
+					bufIndex = 3 * (seed->y*imgWidth + seed->x);
+					cntrBuf[bufIndex + 0]++;
+					cntrBuf[bufIndex + 1]++;
+					cntrBuf[bufIndex + 2]++;
+
 
 					lastRow = seed->y;
 					lastCol = seed->x;
 				}
 
+
 				seedEle = seedEle->Next();
 			}
-
-			for (j=0;j<imgHeight;j++)
+			curveTotal = 0.0;
+			for (int p = 0; p < 10; ++p)
 			{
-				int count[3] = {0,0,0};
-
-				for (i=0;i<imgWidth;i++)
+				curveTotal += 1+((curveScale-1) * curvePoints[p]);
+			}
+			int start = 3 * (minY*imgWidth + minX);
+			for (j = minY; j<maxY; j++)
+			{
+				printf("%d\n", j/((maxY+10) / 10));
+				double num = curvePoints[j / ((maxY+10)/10)];
+				num = (1 + (curveScale - 1)*num) / curveTotal * curveScale*10;
+				num -= 1;
+				rem += num;
+				int n = 0;
+				if (rem >= 1)
 				{
-					int bufIndex = 3*(j*imgWidth+i);
+					n = rem;
+					rem = rem - n;
+					addition += n;
+					flag = true;
+				}
+				else
+				{
+					flag = false;
+				}
+				int count[3] = { 0,0,0 };
+
+
+				for (i = minX; i<maxX; i++)
+				{
 					
-					for (int c=0; c<3; c++)
+					int normalind = 3 * (j*imgWidth + i);
+					int bufIndex = 3 * ((j+addition)*imgWidth + i);
+
+					for (int c = 0; c<3; c++)
 					{
-						if (cntrBuf[bufIndex+c]==0)
+						if (cntrBuf[normalind + c] == 0)
 						{
-							if (count[c]%2)
+							if (count[c] % 2)
 							{
-								maskBuf[bufIndex+c]=255;
+								if (flag)
+								{
+									for (int i = 0; i <= n; ++i) 
+									{
+	//									int bufIndex2 = 3 * (( j+addition -i)*imgWidth + i);
+										
+										maskBuf[bufIndex -3*imgWidth*i+ c-start] = origImg[ normalind + c];
+
+									}
+
+								}
+								maskBuf[bufIndex + c-start] = origImg[ normalind+c];
 							}
 						}
 						else
 						{
-							count[c] += cntrBuf[bufIndex+c];
+							count[c] += cntrBuf[normalind + c];
 						}
 					}
 				}
 			}
 
+
 			seedEle = contours[k]->GetHeadPtr();
 			while (!contours[k]->IsSentinel(seedEle))
 			{
 				seed = seedEle->Data();
-				bufIndex = 3*(seed->y*imgWidth+seed->x);
-				maskBuf[bufIndex+0] = maskBuf[bufIndex+1] = maskBuf[bufIndex+2] = 255;
+				bufIndex = 3 * (seed->y*imgWidth + seed->x);
+		//		maskBuf[bufIndex + 0] =/* maskBuf[bufIndex + 1] = maskBuf[bufIndex + 2] = */255;
+
 
 				seedEle = seedEle->Next();
 			}
 		}
 	}
 
+
 	delete[] cntrBuf;
+
 
 	//our buffer is in R, G, B order from top to bottom and from left to right;
 	//Rick's .tga file format is in B,G,R order from bottom to top and from left to right;
-	for (j=0;j<imgHeight;j++)
+	for (j = 0; j<imgHeight*2; j++)
 	{
-		for (i=0;i<imgWidth;i++)
+		for (i = 0; i<imgWidth; i++)
 		{
-			int index = 3*(j*imgWidth+i);
+			int index = 3 * (j*imgWidth + i);
 			int x = i;
-			int y = imgHeight-1-j;
-			rick.Pixel(x,y,0) = maskBuf[index+2];
-			rick.Pixel(x,y,1) = maskBuf[index+1];
-			rick.Pixel(x,y,2) = maskBuf[index+0];
+			int y = imgHeight*2 - 1 - j;
+			rick.Pixel(x, y, 0) = maskBuf[index + 2];
+			rick.Pixel(x, y, 1) = maskBuf[index + 1];
+			rick.Pixel(x, y, 2) = maskBuf[index + 0];
 		}
 	}
-	
+
 	delete[] maskBuf;
 
-	WriteFile(rick,filename);	
+
+	WriteFile(rick, filename);
 }
+
 
 void ImgView::TryFilter(void)
 {
@@ -396,9 +515,11 @@ void ImgView::TryFilter(void)
 	//cout<<"try filter!"<<endl;
 }
 
+
 void ImgView::LoadFilter(void)
 {
 	char *filename = fl_file_chooser("choose a filter file", "*.txt", 0);
+
 
 	if (filename)
 	{
@@ -406,27 +527,34 @@ void ImgView::LoadFilter(void)
 	}
 }
 
+
 void ImgView::LoadFilter(const char *filename)
 {
-	FILE *fp = fopen(filename,"r");
+	FILE *fp = fopen(filename, "r");
+
 
 	int i;
-	for (i=0;i<FLT_WIDTH*FLT_HEIGHT;i++)
+	for (i = 0; i<FLT_WIDTH*FLT_HEIGHT; i++)
 	{
-		fscanf(fp,"%lf",fltKernel+i);
+		fscanf(fp, "%lf", fltKernel + i);
 	}
 
-	fscanf(fp,"%lf",&scale);
-	fscanf(fp,"%lf",&offset);
+
+	fscanf(fp, "%lf", &scale);
+	fscanf(fp, "%lf", &offset);
+
 
 	fclose(fp);
+
 
 	InitFltDesignUI();
 }
 
+
 void ImgView::SaveFilter(void)
 {
 	char *filename = fl_file_chooser("choose a filter file", "*.txt", 0);
+
 
 	if (filename)
 	{
@@ -434,25 +562,30 @@ void ImgView::SaveFilter(void)
 	}
 }
 
+
 void ImgView::SaveFilter(const char *filename)
 {
-	FILE *fp = fopen(filename,"w");
+	FILE *fp = fopen(filename, "w");
 
-	int i,j;
-	for (j=0;j<FLT_HEIGHT;j++)
+
+	int i, j;
+	for (j = 0; j<FLT_HEIGHT; j++)
 	{
-		for (i=0;i<FLT_WIDTH;i++)
+		for (i = 0; i<FLT_WIDTH; i++)
 		{
-			fprintf(fp,"%lf ",fltKernel[j*FLT_WIDTH+i]);
+			fprintf(fp, "%lf ", fltKernel[j*FLT_WIDTH + i]);
 		}
-		fprintf(fp,"\n");
+		fprintf(fp, "\n");
 	}
 
-	fprintf(fp,"%lf\n",scale);
-	fprintf(fp,"%lf",offset);
 
-	fclose(fp);	
+	fprintf(fp, "%lf\n", scale);
+	fprintf(fp, "%lf", offset);
+
+
+	fclose(fp);
 }
+
 
 void ImgView::PreviewFilter(void)
 {
@@ -460,119 +593,144 @@ void ImgView::PreviewFilter(void)
 	{
 		Filter();
 
-		for (int y=0; y<imgHeight; y++) {
-			for (int x=0; x<imgWidth; x++) {
-				for (int c=0; c<3; c++) {
-					curImgChar[y*imgWidth*3 + x*3 + c] = (unsigned char)__min(255.0,__max(0.0,floor(curImg[y*imgWidth*3 + x*3 + c])));
+
+		for (int y = 0; y<imgHeight; y++) {
+			for (int x = 0; x<imgWidth; x++) {
+				for (int c = 0; c<3; c++) {
+					curImgChar[y*imgWidth * 3 + x * 3 + c] = (unsigned char)__min(255.0, __max(0.0, floor(curImg[y*imgWidth * 3 + x * 3 + c])));
 				}
 			}
 		}
 
+
 		UpdateViewBuffer();
+
 
 		redraw();
 	}
 
+
 	//cout<<"preview"<<endl;	
 }
+
 
 void ImgView::CancelFilter(void)
 {
 	if (imgBuf)
 	{
-		for (int y=0; y<imgHeight; y++) {
-			for (int x=0; x<imgWidth; x++) {
-				for (int c=0; c<3; c++) {
-					curImg[y*imgWidth*3 + x*3 + c] = double(origImg[y*imgWidth*3 + x*3 + c]);
-					curImgChar[y*imgWidth*3 + x*3 + c] = origImg[y*imgWidth*3 + x*3 + c];
+		for (int y = 0; y<imgHeight; y++) {
+			for (int x = 0; x<imgWidth; x++) {
+				for (int c = 0; c<3; c++) {
+					curImg[y*imgWidth * 3 + x * 3 + c] = double(origImg[y*imgWidth * 3 + x * 3 + c]);
+					curImgChar[y*imgWidth * 3 + x * 3 + c] = origImg[y*imgWidth * 3 + x * 3 + c];
+
 
 				}
 			}
 		}
 
+
 		UpdateViewBuffer();
+
 
 		redraw();
 	}
 
+
 	//cout<<"cancel"<<endl;	
 }
+
 
 void ImgView::AcceptFilter(void)
 {
 	if (imgBuf)
 	{
-		for (int y=0; y<imgHeight; y++) {
-			for (int x=0; x<imgWidth; x++) {
-				for (int c=0; c<3; c++) {
-					origImg[y*imgWidth*3 + x*3 + c] = imgBuf[y*imgWidth*3 + x*3 + c] = curImgChar[y*imgWidth*3 + x*3 + c];
+		for (int y = 0; y<imgHeight; y++) {
+			for (int x = 0; x<imgWidth; x++) {
+				for (int c = 0; c<3; c++) {
+					origImg[y*imgWidth * 3 + x * 3 + c] = imgBuf[y*imgWidth * 3 + x * 3 + c] = curImgChar[y*imgWidth * 3 + x * 3 + c];
 				}
 			}
 		}
 
-		for (int j=0;j<imgHeight;j++)
-		{
-			for (int i=0;i<imgWidth;i++)
-			{
-				int imgIndex = 3*(j*imgWidth+i);
-				int graphIndex = 3*((3*j+1)*graphWidth+(3*i+1));
-				int x = i;
-				int y = imgHeight-1-j;
 
-				for (int c = 0;c<3;c++)
+		for (int j = 0; j<imgHeight; j++)
+		{
+			for (int i = 0; i<imgWidth; i++)
+			{
+				int imgIndex = 3 * (j*imgWidth + i);
+				int graphIndex = 3 * ((3 * j + 1)*graphWidth + (3 * i + 1));
+				int x = i;
+				int y = imgHeight - 1 - j;
+
+
+				for (int c = 0; c<3; c++)
 				{
 					//costGraph[graphIndex+c] = 
-					pixelNodes[graphIndex +c] = 
-					imgBuf[imgIndex+c];
-						
-					pixelNodes[graphIndex+3*(+1)			+c] = 
-					pixelNodes[graphIndex+3*(-graphWidth+1)+c] = 
-					pixelNodes[graphIndex+3*(-graphWidth)	+c] = 
-					pixelNodes[graphIndex+3*(-graphWidth-1)+c] = 
-					pixelNodes[graphIndex+3*(-1)			+c] = 
-					pixelNodes[graphIndex+3*(+graphWidth-1)+c] = 
-					pixelNodes[graphIndex+3*(+graphWidth)	+c] = 
-					pixelNodes[graphIndex+3*(+graphWidth+1)+c] = 0;					 
-				}			
+					pixelNodes[graphIndex + c] =
+						imgBuf[imgIndex + c];
+
+					pixelNodes[graphIndex + 3 * (+1) + c] =
+						pixelNodes[graphIndex + 3 * (-graphWidth + 1) + c] =
+						pixelNodes[graphIndex + 3 * (-graphWidth) + c] =
+						pixelNodes[graphIndex + 3 * (-graphWidth - 1) + c] =
+						pixelNodes[graphIndex + 3 * (-1) + c] =
+						pixelNodes[graphIndex + 3 * (+graphWidth - 1) + c] =
+						pixelNodes[graphIndex + 3 * (+graphWidth) + c] =
+						pixelNodes[graphIndex + 3 * (+graphWidth + 1) + c] = 0;
+				}
 			}
 		}
 
-		InitNodeBuf(nodeBuf,imgBuf,imgWidth,imgHeight);
+
+		InitNodeBuf(nodeBuf, imgBuf, imgWidth, imgHeight);
 		MakeCostGraph(costGraph, nodeBuf, imgBuf, imgWidth, imgHeight);
 
+
 	}
+
+
+
 
 
 
 	UpdateViewBuffer();
 
+
 	redraw();
+
 
 	//cout<<"accept"<<endl;
 }
+
 
 void ImgView::StopFilter(void)
 {
 	if (imgBuf)
 	{
-		for (int y=0; y<imgHeight; y++) {
-			for (int x=0; x<imgWidth; x++) {
-				for (int c=0; c<3; c++) {
-					curImg[y*imgWidth*3 + x*3 + c] = double(origImg[y*imgWidth*3 + x*3 + c]);
-					curImgChar[y*imgWidth*3 + x*3 + c] = origImg[y*imgWidth*3 + x*3 + c];
+		for (int y = 0; y<imgHeight; y++) {
+			for (int x = 0; x<imgWidth; x++) {
+				for (int c = 0; c<3; c++) {
+					curImg[y*imgWidth * 3 + x * 3 + c] = double(origImg[y*imgWidth * 3 + x * 3 + c]);
+					curImgChar[y*imgWidth * 3 + x * 3 + c] = origImg[y*imgWidth * 3 + x * 3 + c];
+
 
 				}
 			}
 		}
 
+
 		UpdateViewBuffer();
+
 
 		redraw();
 	}
 
+
 	fltDesignUI->hide();
 	//cout<<"stop filter!"<<endl;
 }
+
 
 void ImgView::InitFltDesignUI(void)
 {
@@ -602,9 +760,11 @@ void ImgView::InitFltDesignUI(void)
 	fltDesignUI->ele23->value(fltKernel[23]);
 	fltDesignUI->ele24->value(fltKernel[24]);
 
+
 	fltDesignUI->scale->value(scale);
 	fltDesignUI->offset->value(offset);
 }
+
 
 void ImgView::UpdateFilter()
 {
@@ -634,11 +794,14 @@ void ImgView::UpdateFilter()
 	fltKernel[23] = fltDesignUI->ele23->value();
 	fltKernel[24] = fltDesignUI->ele24->value();
 
+
 	scale = fltDesignUI->scale->value();
 	offset = fltDesignUI->offset->value();
 
-//	printf("update filter\n");
+
+	//	printf("update filter\n");
 }
+
 
 void ImgView::Filter(void)
 {
@@ -646,39 +809,58 @@ void ImgView::Filter(void)
 	{
 		unsigned char *range = NULL;
 
+
 		if (fltDesignUI->selection->value())
 		{
 			range = brushSelection;
 		}
 
-		image_filter(curImg, origImg, range, imgWidth, imgHeight, 
-			fltKernel, FLT_WIDTH, FLT_HEIGHT, 
+
+		image_filter(curImg, origImg, range, imgWidth, imgHeight,
+			fltKernel, FLT_WIDTH, FLT_HEIGHT,
 			scale, offset);
 	}
 }
+
 
 void ImgView::TryBrush(void)
 {
 	brushConfigUI->show();
 }
 
+
 void ImgView::UpdateBrushConfig(void)
 {
-	if (brushConfigUI->round->value())
+	/*if (brushConfigUI->round->value())
 	{
 		brushType = ROUND_BRUSH;
 	}
 	else if (brushConfigUI->square->value())
 	{
 		brushType = SQUARE_BRUSH;
+	}*/
+
+
+	point1 = brushConfigUI->point1->value();
+	point2 = brushConfigUI->point2->value();
+	point3 = brushConfigUI->point3->value();
+	point4 = brushConfigUI->point4->value();
+//	brushOpacity = brushConfigUI->brushOpacity->value();
+	curveTotal = 0.0;
+	for (int n = 0; n < 10; ++n)
+	{
+		double term = (1.0 / 10.0) * n;
+		double mterm = 1 - term;
+		curvePoints[n] = mterm*mterm*mterm*point1 + 3*mterm*mterm*term*point2 + 3*mterm*term*term*point3 +term*term*term*point4;
+		
+		printf("%f\n", curvePoints[n]);
+
 	}
-
-	brushSize = (int)brushConfigUI->brushSize->value();
-	brushOpacity = brushConfigUI->brushOpacity->value();
-
 	brushRadius2 = brushSize * brushSize;
 
+
 	//printf("brush size %d\n",brushSize);
+
 
 	if (imgBuf)
 	{
@@ -691,30 +873,33 @@ void ImgView::UpdateBrushConfig(void)
 	}
 }
 
+
 void ImgView::CleanBrushSelection(void)
 {
+	point1 = point2 = point3 = point4 = 0;
 	if (imgBuf)
 	{
-		memset(brushSelection,0,imgWidth*imgHeight*sizeof(unsigned char));
-		
+		memset(brushSelection, 0, imgWidth*imgHeight * sizeof(unsigned char));
+
 		UpdateImgBufOpacity();
 		if (drawMode == IMAGE_ONLY || drawMode == IMAGE_WITH_CONTOUR)
 		{
-			UpdateViewBuffer();		
+			UpdateViewBuffer();
 			redraw();
 		}
 	}
 }
 
+
 void ImgView::BrushSelection(int b)
 {
 	int invalid_tree = 0;
-	if (!b&&brushSelPtr==brushSelection)
+	if (!b&&brushSelPtr == brushSelection)
 	{
 		brushSelPtr = NULL;
 		invalid_tree = 1;
 	}
-	else if (b&&brushSelPtr==NULL)
+	else if (b&&brushSelPtr == NULL)
 	{
 		brushSelPtr = brushSelection;
 		invalid_tree = 1;
@@ -726,12 +911,14 @@ void ImgView::BrushSelection(int b)
 			Seed *seed = currentCntr.GetTailPtr()->Data();
 			int col = seed->x;
 			int row = seed->y;
-			int seedIndex = row*imgWidth+col;
+			int seedIndex = row*imgWidth + col;
 
-			if (brushSelPtr==brushSelection && !brushSelection[seedIndex])
+
+			if (brushSelPtr == brushSelection && !brushSelection[seedIndex])
 			{
-				printf("current seed ( %d , %d ) is out of brush selected range!\n",col,row);
+				printf("current seed ( %d , %d ) is out of brush selected range!\n", col, row);
 			}
+
 
 			int expanded = imgWidth*imgHeight;
 			if (scissorPanelUI->expanded->active())
@@ -739,57 +926,62 @@ void ImgView::BrushSelection(int b)
 				expanded = (int)scissorPanelUI->expanded->value();
 			}
 			LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, expanded);
-
+			CTypedPtrDblList <Node> path;
+			MinimumPath(&path, col, row, nodeBuf, imgWidth, imgHeight, minX, minY, maxX, maxY);
 			printf("minimun path tree is finished\n");
-			
+
 			UpdateViewBuffer();
-			redraw();		
+			redraw();
 		}
 	}
 }
 
+
 void ImgView::UpdateImgBufOpacity(void)
 {
-	int i,j;
-	for (j=0;j<imgHeight;j++)
+	int i, j;
+	for (j = 0; j<imgHeight; j++)
 	{
-		for (i=0;i<imgWidth;i++)
+		for (i = 0; i<imgWidth; i++)
 		{
-			int selIndex = j*imgWidth+i;
-			int imgIndex = 3*selIndex;
+			int selIndex = j*imgWidth + i;
+			int imgIndex = 3 * selIndex;
 			if (brushSelection[selIndex])
 			{
-				for (int c=0;c<3;c++)
+				for (int c = 0; c<3; c++)
 				{
-					double tmp = origImg[imgIndex+c];
+					double tmp = origImg[imgIndex + c];
 					tmp *= brushOpacity;
-					imgBuf[imgIndex+c] = (unsigned char)__min(255.0,__max(0.0,floor(tmp)));
+					imgBuf[imgIndex + c] = (unsigned char)__min(255.0, __max(0.0, floor(tmp)));
 				}
 			}
 			else
 			{
-				for (int c=0;c<3;c++)
+				for (int c = 0; c<3; c++)
 				{
-					imgBuf[imgIndex+c] = origImg[imgIndex+c];
+					imgBuf[imgIndex + c] = origImg[imgIndex + c];
 				}
 			}
 		}
 	}
 }
+
 
 void ImgView::TryScissor(void)
 {
 	scissorPanelUI->show();
 }
 
+
 void ImgView::OrigImage(void)
 {
-	if (drawMode!=IMAGE_ONLY)
+	if (drawMode != IMAGE_ONLY)
 	{
 		if (drawMode == GRAPH_WITH_TREE)
 		{
 			UpdatePathTree();
 		}
+
 
 		drawMode = IMAGE_ONLY;
 		if (imgBuf)
@@ -801,14 +993,16 @@ void ImgView::OrigImage(void)
 	scissorPanelUI->expanded->deactivate();
 }
 
+
 void ImgView::Contour(void)
 {
-	if (drawMode!=IMAGE_WITH_CONTOUR)
+	if (drawMode != IMAGE_WITH_CONTOUR)
 	{
 		if (drawMode == GRAPH_WITH_TREE)
 		{
 			UpdatePathTree();
 		}
+
 
 		drawMode = IMAGE_WITH_CONTOUR;
 		if (imgBuf)
@@ -820,14 +1014,16 @@ void ImgView::Contour(void)
 	scissorPanelUI->expanded->deactivate();
 }
 
+
 void ImgView::PixelColor(void)
 {
-	if (drawMode!= GRAPH_WITH_COLOR)
+	if (drawMode != GRAPH_WITH_COLOR)
 	{
 		if (drawMode == GRAPH_WITH_TREE)
 		{
 			UpdatePathTree();
 		}
+
 
 		drawMode = GRAPH_WITH_COLOR;
 		if (imgBuf)
@@ -835,33 +1031,37 @@ void ImgView::PixelColor(void)
 			UpdateViewBuffer();
 			redraw();
 		}
-	}	
+	}
 	scissorPanelUI->expanded->deactivate();
 }
 
+
 void ImgView::CostGraph(void)
-{	
-	if (drawMode!= GRAPH_WITH_COST)
+{
+	if (drawMode != GRAPH_WITH_COST)
 	{
 		if (drawMode == GRAPH_WITH_TREE)
 		{
 			UpdatePathTree();
 		}
 
+
 		drawMode = GRAPH_WITH_COST;
 		if (imgBuf)
 		{
 			UpdateViewBuffer();
 			redraw();
-		}		
-	}	
+		}
+	}
 	scissorPanelUI->expanded->deactivate();
+
 
 }
 
+
 void ImgView::PathTree(void)
 {
-	if (drawMode!=GRAPH_WITH_TREE)
+	if (drawMode != GRAPH_WITH_TREE)
 	{
 		drawMode = GRAPH_WITH_TREE;
 		if (imgBuf)
@@ -872,58 +1072,67 @@ void ImgView::PathTree(void)
 	}
 }
 
+
 void ImgView::MinPath(void)
 {
-	if (drawMode!=GRAPH_WITH_PATH)
+	if (drawMode != GRAPH_WITH_PATH)
 	{
 		if (drawMode == GRAPH_WITH_TREE)
 		{
 			UpdatePathTree();
 		}
 
+
 		drawMode = GRAPH_WITH_PATH;
 		if (imgBuf)
 		{
 			UpdateViewBuffer();
 			redraw();
-		}		
+		}
 	}
 	scissorPanelUI->expanded->deactivate();
 
+
 }
+
 
 void ImgView::PartialExpanding(void)
 {
 	int expanded = (int)scissorPanelUI->expanded->value();
-		
-	if (imgBuf)		
+
+	if (imgBuf)
 	{
 		if (currentCntr.GetCount())
 		{
 			Seed *seed = currentCntr.GetTailPtr()->Data();
 			int col = seed->x;
 			int row = seed->y;
-			int seedIndex = row*imgWidth+col;
+			int seedIndex = row*imgWidth + col;
 
-			if (brushSelPtr==brushSelection && !brushSelection[seedIndex])
+
+			if (brushSelPtr == brushSelection && !brushSelection[seedIndex])
 			{
-				printf("current seed ( %d , %d ) is out of brush selected range!\n",col,row);
+				printf("current seed ( %d , %d ) is out of brush selected range!\n", col, row);
 			}
+
 
 			LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, expanded);
 
-			freePtX = (col-zoomPort[0])/zoomFactor+targetPort[0];
+
+			freePtX = (col - zoomPort[0]) / zoomFactor + targetPort[0];
 			freePtX /= 3;
-			freePtY = (row-zoomPort[2])/zoomFactor+targetPort[2];
+			freePtY = (row - zoomPort[2]) / zoomFactor + targetPort[2];
 			freePtY /= 3;
-			
+
 			printf("minimun path tree is finished\n");
 		}
 
+
 		UpdateViewBuffer();
-		redraw();		
+		redraw();
 	}
 }
+
 
 void ImgView::UpdatePathTree(void)
 {
@@ -931,19 +1140,23 @@ void ImgView::UpdatePathTree(void)
 	{
 		Seed *seed = currentCntr.GetTailPtr()->Data();
 		int col = seed->x;
-		int row = seed->y;		
-		int seedIndex = row*imgWidth+col;
+		int row = seed->y;
+		int seedIndex = row*imgWidth + col;
+
 
 		if (brushSelPtr == brushSelection && !brushSelection[seedIndex])
 		{
-			printf("current seed ( %d , %d ) is out of brush selected range!\n",col,row);
+			printf("current seed ( %d , %d ) is out of brush selected range!\n", col, row);
 		}
 
+
 		LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, imgWidth*imgHeight);
+
 
 		printf("minimun path tree is finished\n");
 	}
 }
+
 
 void ImgView::MarkPath(int col, int row, const unsigned char clr[3])
 {
@@ -953,256 +1166,289 @@ void ImgView::MarkPath(int col, int row, const unsigned char clr[3])
 		CTypedPtrDblList <Node> path;
 		MinimumPath(&path,col,row,nodeBuf,imgWidth,imgHeight);
 
+
 		path.RemoveHead();
 		while(path
 		*/
 
+
 		int freePtIndex = row * imgWidth + col;
-		Node *node = nodeBuf+freePtIndex;
-		
+		Node *node = nodeBuf + freePtIndex;
+
 		int imgX = col;
 		int imgY = row;
 
-		if (IsPtInRect(imgX,imgY,targetPort))
-		{
-			int viewPixelTop = (imgY-targetPort[2])*zoomFactor+zoomPort[2];
-			int viewPixelLeft = (imgX-targetPort[0])*zoomFactor+zoomPort[0];
 
-			unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-			for (int n = 0;n<zoomFactor;n++)
+		if (IsPtInRect(imgX, imgY, targetPort))
+		{
+			int viewPixelTop = (imgY - targetPort[2])*zoomFactor + zoomPort[2];
+			int viewPixelLeft = (imgX - targetPort[0])*zoomFactor + zoomPort[0];
+
+
+			unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+			for (int n = 0; n<zoomFactor; n++)
 			{
 				unsigned char *viewCol = viewRow;
-				for (int m = 0;m<zoomFactor;m++)
+				for (int m = 0; m<zoomFactor; m++)
 				{
 					viewCol[0] = clr[0];
 					viewCol[1] = clr[1];
 					viewCol[2] = clr[2];
 					viewCol += 3;
 				}
-				viewRow += 3*viewWidth;
+				viewRow += 3 * viewWidth;
 			}
 		}
+
 
 		while (node->prevNode)
 		{
 			node = node->prevNode;
 
+
 			imgX = node->column;
 			imgY = node->row;
 
-			if (IsPtInRect(imgX,imgY,targetPort))
-			{
-				int viewPixelTop = (imgY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (imgX-targetPort[0])*zoomFactor+zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+			if (IsPtInRect(imgX, imgY, targetPort))
+			{
+				int viewPixelTop = (imgY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (imgX - targetPort[0])*zoomFactor + zoomPort[0];
+
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = clr[0];
 						viewCol[1] = clr[1];
 						viewCol[2] = clr[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
 		}
 	}
 	else if (drawMode == GRAPH_WITH_PATH)
 	{
-		int imgX = col/3;
-		int imgY = row/3;
+		int imgX = col / 3;
+		int imgY = row / 3;
+
 
 		int freePtIndex = imgY * imgWidth + imgX;
-		Node *node = nodeBuf+freePtIndex;
-		
-		int graphX = 3*imgX+1;
-		int graphY = 3*imgY+1;
+		Node *node = nodeBuf + freePtIndex;
 
-		if (IsPtInRect(graphX,graphY,targetPort))
+		int graphX = 3 * imgX + 1;
+		int graphY = 3 * imgY + 1;
+
+
+		if (IsPtInRect(graphX, graphY, targetPort))
 		{
-			int viewPixelTop = (graphY-targetPort[2])*zoomFactor+zoomPort[2];
-			int viewPixelLeft = (graphX-targetPort[0])*zoomFactor+zoomPort[0];
+			int viewPixelTop = (graphY - targetPort[2])*zoomFactor + zoomPort[2];
+			int viewPixelLeft = (graphX - targetPort[0])*zoomFactor + zoomPort[0];
 
-			unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-			for (int n = 0;n<zoomFactor;n++)
+
+			unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+			for (int n = 0; n<zoomFactor; n++)
 			{
 				unsigned char *viewCol = viewRow;
-				for (int m = 0;m<zoomFactor;m++)
+				for (int m = 0; m<zoomFactor; m++)
 				{
 					viewCol[0] = clr[0];
 					viewCol[1] = clr[1];
 					viewCol[2] = clr[2];
 					viewCol += 3;
 				}
-				viewRow += 3*viewWidth;
+				viewRow += 3 * viewWidth;
 			}
 		}
+
 
 		while (node->prevNode)
 		{
 			node = node->prevNode;
 
+
 			imgX = node->column;
 			imgY = node->row;
 
-			graphX = 3*imgX+1;
-			graphY = 3*imgY+1;
 
-			if (IsPtInRect(graphX,graphY,targetPort))
+			graphX = 3 * imgX + 1;
+			graphY = 3 * imgY + 1;
+
+
+			if (IsPtInRect(graphX, graphY, targetPort))
 			{
-				int viewPixelTop = (graphY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (graphX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (graphY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (graphX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = clr[0];
 						viewCol[1] = clr[1];
 						viewCol[2] = clr[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
 		}
 	}
 }
+
 
 void ImgView::UnMarkPath(int col, int row)
 {
 	if (drawMode == IMAGE_WITH_CONTOUR)
 	{
 		int freePtIndex = row * imgWidth + col;
-		Node *node = nodeBuf+freePtIndex;
-		
+		Node *node = nodeBuf + freePtIndex;
+
 		int imgX = col;
 		int imgY = row;
-		const unsigned char *imgPixel = imgBuf + 3*(imgY*imgWidth+imgX);
+		const unsigned char *imgPixel = imgBuf + 3 * (imgY*imgWidth + imgX);
 
-		if (IsPtInRect(imgX,imgY,targetPort))
+
+		if (IsPtInRect(imgX, imgY, targetPort))
 		{
-			int viewPixelTop = (imgY-targetPort[2])*zoomFactor+zoomPort[2];
-			int viewPixelLeft = (imgX-targetPort[0])*zoomFactor+zoomPort[0];
+			int viewPixelTop = (imgY - targetPort[2])*zoomFactor + zoomPort[2];
+			int viewPixelLeft = (imgX - targetPort[0])*zoomFactor + zoomPort[0];
 
-			unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-			for (int n = 0;n<zoomFactor;n++)
+
+			unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+			for (int n = 0; n<zoomFactor; n++)
 			{
 				unsigned char *viewCol = viewRow;
-				for (int m = 0;m<zoomFactor;m++)
+				for (int m = 0; m<zoomFactor; m++)
 				{
 					viewCol[0] = imgPixel[0];
 					viewCol[1] = imgPixel[1];
 					viewCol[2] = imgPixel[2];
 					viewCol += 3;
 				}
-				viewRow += 3*viewWidth;
+				viewRow += 3 * viewWidth;
 			}
 		}
+
 
 		while (node->prevNode)
 		{
 			node = node->prevNode;
 
+
 			imgX = node->column;
 			imgY = node->row;
-		    imgPixel = imgBuf + 3*(imgY*imgWidth+imgX);
+			imgPixel = imgBuf + 3 * (imgY*imgWidth + imgX);
 
-			if (IsPtInRect(imgX,imgY,targetPort))
+
+			if (IsPtInRect(imgX, imgY, targetPort))
 			{
-				int viewPixelTop = (imgY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (imgX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (imgY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (imgX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = imgPixel[0];
 						viewCol[1] = imgPixel[1];
 						viewCol[2] = imgPixel[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
 		}
 	}
 	else if (drawMode == GRAPH_WITH_PATH)
 	{
-		int imgX = col/3;
-		int imgY = row/3;
-	    const unsigned char *imgPixel = imgBuf + 3*(imgY*imgWidth+imgX);
+		int imgX = col / 3;
+		int imgY = row / 3;
+		const unsigned char *imgPixel = imgBuf + 3 * (imgY*imgWidth + imgX);
+
 
 		int freePtIndex = imgY * imgWidth + imgX;
-		Node *node = nodeBuf+freePtIndex;
-		
-		int graphX = 3*imgX+1;
-		int graphY = 3*imgY+1;
+		Node *node = nodeBuf + freePtIndex;
 
-		if (IsPtInRect(graphX,graphY,targetPort))
+		int graphX = 3 * imgX + 1;
+		int graphY = 3 * imgY + 1;
+
+
+		if (IsPtInRect(graphX, graphY, targetPort))
 		{
-			int viewPixelTop = (graphY-targetPort[2])*zoomFactor+zoomPort[2];
-			int viewPixelLeft = (graphX-targetPort[0])*zoomFactor+zoomPort[0];
+			int viewPixelTop = (graphY - targetPort[2])*zoomFactor + zoomPort[2];
+			int viewPixelLeft = (graphX - targetPort[0])*zoomFactor + zoomPort[0];
 
-			unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-			for (int n = 0;n<zoomFactor;n++)
+
+			unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+			for (int n = 0; n<zoomFactor; n++)
 			{
 				unsigned char *viewCol = viewRow;
-				for (int m = 0;m<zoomFactor;m++)
+				for (int m = 0; m<zoomFactor; m++)
 				{
 					viewCol[0] = imgPixel[0];
 					viewCol[1] = imgPixel[1];
 					viewCol[2] = imgPixel[2];
 					viewCol += 3;
 				}
-				viewRow += 3*viewWidth;
+				viewRow += 3 * viewWidth;
 			}
 		}
+
 
 		while (node->prevNode)
 		{
 			node = node->prevNode;
 
+
 			imgX = node->column;
 			imgY = node->row;
-		    imgPixel = imgBuf + 3*(imgY*imgWidth+imgX);
+			imgPixel = imgBuf + 3 * (imgY*imgWidth + imgX);
 
 
-			graphX = 3*imgX+1;
-			graphY = 3*imgY+1;
 
-			if (IsPtInRect(graphX,graphY,targetPort))
+
+			graphX = 3 * imgX + 1;
+			graphY = 3 * imgY + 1;
+
+
+			if (IsPtInRect(graphX, graphY, targetPort))
 			{
-				int viewPixelTop = (graphY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (graphX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (graphY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (graphX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = imgPixel[0];
 						viewCol[1] = imgPixel[1];
 						viewCol[2] = imgPixel[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
 		}
 	}
 }
 
-void ImgView:: MarkPath(const CTypedPtrDblList <Seed> *cntr, const unsigned char clr[3])
+
+void ImgView::MarkPath(const CTypedPtrDblList <Seed> *cntr, const unsigned char clr[3])
 {
 	if (drawMode == IMAGE_WITH_CONTOUR)
 	{
@@ -1212,25 +1458,27 @@ void ImgView:: MarkPath(const CTypedPtrDblList <Seed> *cntr, const unsigned char
 			Seed *seed = seedEle->Data();
 			int imgX = seed->x;
 			int imgY = seed->y;
-			if (IsPtInRect(imgX,imgY,targetPort))
+			if (IsPtInRect(imgX, imgY, targetPort))
 			{
-				int viewPixelTop = (imgY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (imgX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (imgY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (imgX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = clr[0];
 						viewCol[1] = clr[1];
 						viewCol[2] = clr[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
+
 
 			seedEle = seedEle->Next();
 		}
@@ -1243,33 +1491,37 @@ void ImgView:: MarkPath(const CTypedPtrDblList <Seed> *cntr, const unsigned char
 			Seed *seed = seedEle->Data();
 			int imgX = seed->x;
 			int imgY = seed->y;
-			int graphX = 3*imgX+1;
-			int graphY = 3*imgY+1;
+			int graphX = 3 * imgX + 1;
+			int graphY = 3 * imgY + 1;
 
-			if (IsPtInRect(graphX,graphY,targetPort))
+
+			if (IsPtInRect(graphX, graphY, targetPort))
 			{
-				int viewPixelTop = (graphY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (graphX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (graphY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (graphX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = clr[0];
 						viewCol[1] = clr[1];
 						viewCol[2] = clr[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
+
 
 			seedEle = seedEle->Next();
 		}
 	}
 }
+
 
 void ImgView::UnMarkPath(const CTypedPtrDblList <Seed> *cntr)
 {
@@ -1281,27 +1533,30 @@ void ImgView::UnMarkPath(const CTypedPtrDblList <Seed> *cntr)
 			Seed *seed = seedEle->Data();
 			int imgX = seed->x;
 			int imgY = seed->y;
-			const unsigned char *imgPixel = imgBuf + 3*(imgY*imgWidth+imgX);
+			const unsigned char *imgPixel = imgBuf + 3 * (imgY*imgWidth + imgX);
 
-			if (IsPtInRect(imgX,imgY,targetPort))
+
+			if (IsPtInRect(imgX, imgY, targetPort))
 			{
-				int viewPixelTop = (imgY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (imgX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (imgY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (imgX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = imgPixel[0];
 						viewCol[1] = imgPixel[1];
 						viewCol[2] = imgPixel[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
+
 
 			seedEle = seedEle->Next();
 		}
@@ -1314,181 +1569,205 @@ void ImgView::UnMarkPath(const CTypedPtrDblList <Seed> *cntr)
 			Seed *seed = seedEle->Data();
 			int imgX = seed->x;
 			int imgY = seed->y;
-			const unsigned char *imgPixel = imgBuf + 3*(imgY*imgWidth+imgX);
+			const unsigned char *imgPixel = imgBuf + 3 * (imgY*imgWidth + imgX);
 
-			int graphX = 3*imgX+1;
-			int graphY = 3*imgY+1;
 
-			if (IsPtInRect(graphX,graphY,targetPort))
+			int graphX = 3 * imgX + 1;
+			int graphY = 3 * imgY + 1;
+
+
+			if (IsPtInRect(graphX, graphY, targetPort))
 			{
-				int viewPixelTop = (graphY-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (graphX-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (graphY - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (graphX - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
 						viewCol[0] = imgBuf[0];
 						viewCol[1] = imgBuf[1];
 						viewCol[2] = imgBuf[2];
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
+
 
 			seedEle = seedEle->Next();
 		}
 
+
 	}
 }
 
-void ImgView:: MarkCurrentContour(void)
+
+void ImgView::MarkCurrentContour(void)
 {
-	MarkPath(&currentCntr,SELECTED_PATH_COLOR);
+	MarkPath(&currentCntr, SELECTED_PATH_COLOR);
 }
 
-void ImgView:: MarkPreviousContour(void)
+
+void ImgView::MarkPreviousContour(void)
 {
-	for (int i=0;i<contours.GetSize();i++)
+	for (int i = 0; i<contours.GetSize(); i++)
 	{
-		if (i==selectedCntr)
+		if (i == selectedCntr)
 		{
-			MarkPath(contours[i],SELECTED_PATH_COLOR);
+			MarkPath(contours[i], SELECTED_PATH_COLOR);
 		}
 		else
 		{
-			MarkPath(contours[i],PATH_COLOR);
+			MarkPath(contours[i], PATH_COLOR);
 		}
 	}
 }
 
-void ImgView:: MarkAllContour(void)
+
+void ImgView::MarkAllContour(void)
 {
 	MarkCurrentContour();
 	MarkPreviousContour();
 }
 
+
 void ImgView::MarkAllContour(int col, int row)
 {
 	MarkAllContour();
-	MarkPath(col,row,SELECTED_PATH_COLOR);
+	MarkPath(col, row, SELECTED_PATH_COLOR);
 }
 
-void ImgView:: UnMarkCurrentContour(void)
+
+void ImgView::UnMarkCurrentContour(void)
 {
 	UnMarkPath(&currentCntr);
 }
 
-void ImgView:: UnMarkPreviousContour(void)
+
+void ImgView::UnMarkPreviousContour(void)
 {
-	for (int i=0;i<contours.GetSize();i++)
+	for (int i = 0; i<contours.GetSize(); i++)
 	{
 		UnMarkPath(contours[i]);
 	}
 
+
 }
 
-void ImgView:: UnMarkAllContour(void)
+
+void ImgView::UnMarkAllContour(void)
 {
 	UnMarkCurrentContour();
 	UnMarkPreviousContour();
 }
 
+
 void ImgView::MarkPathTree(void)
 {
-	int i,j;
+	int i, j;
 
-	for (j=0;j<imgHeight;j++)
+
+	for (j = 0; j<imgHeight; j++)
 	{
-		for (i=0;i<imgWidth;i++)
+		for (i = 0; i<imgWidth; i++)
 		{
-			int nodeIndex = j*imgWidth+i;
-			Node *node = nodeBuf+nodeIndex;
+			int nodeIndex = j*imgWidth + i;
+			Node *node = nodeBuf + nodeIndex;
+
 
 			//if (node->prevNode)
 			if (node->state == EXPANDED || node->state == ACTIVE)
 			{
 				Node *prevNode = node->prevNode;
 
+
 				if (prevNode)
 				{
 					int prevNodeCol = prevNode->column;
 					int prevNodeRow = prevNode->row;
 
+
 					int graphCol[2], graphRow[2];
-					
+
 					if (prevNodeCol<node->column)
 					{
-						graphCol[0] = 3*node->column;
-						graphCol[1] = 3*node->column-1;
+						graphCol[0] = 3 * node->column;
+						graphCol[1] = 3 * node->column - 1;
 					}
 					else if (prevNodeCol>node->column)
 					{
-						graphCol[0] = 3*node->column+2;
-						graphCol[1] = 3*node->column+3;
+						graphCol[0] = 3 * node->column + 2;
+						graphCol[1] = 3 * node->column + 3;
 					}
 					else
 					{
-						graphCol[0] = 3*node->column+1;
-						graphCol[1] = 3*node->column+1;
+						graphCol[0] = 3 * node->column + 1;
+						graphCol[1] = 3 * node->column + 1;
 					}
+
 
 					if (prevNodeRow<node->row)
 					{
-						graphRow[0] = 3*node->row;
-						graphRow[1] = 3*node->row-1;
+						graphRow[0] = 3 * node->row;
+						graphRow[1] = 3 * node->row - 1;
 					}
 					else if (prevNodeRow>node->row)
 					{
-						graphRow[0] = 3*node->row+2;
-						graphRow[1] = 3*node->row+3;
+						graphRow[0] = 3 * node->row + 2;
+						graphRow[1] = 3 * node->row + 3;
 					}
 					else
 					{
-						graphRow[0] = 3*node->row+1;
-						graphRow[1] = 3*node->row+1;
+						graphRow[0] = 3 * node->row + 1;
+						graphRow[1] = 3 * node->row + 1;
 					}
+
 
 					for (int k = 0; k<2; k++)
 					{
 						if (IsPtInRect(graphCol[k], graphRow[k], targetPort))
 						{
-							int viewPixelTop = (graphRow[k]-targetPort[2])*zoomFactor+zoomPort[2];
-							int viewPixelLeft = (graphCol[k]-targetPort[0])*zoomFactor+zoomPort[0];
+							int viewPixelTop = (graphRow[k] - targetPort[2])*zoomFactor + zoomPort[2];
+							int viewPixelLeft = (graphCol[k] - targetPort[0])*zoomFactor + zoomPort[0];
 
-							unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-							for (int n = 0;n<zoomFactor;n++)
+
+							unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+							for (int n = 0; n<zoomFactor; n++)
 							{
 								unsigned char *viewCol = viewRow;
-								for (int m = 0;m<zoomFactor;m++)
+								for (int m = 0; m<zoomFactor; m++)
 								{
-									viewCol[0] = (TREE_COLOR[0]>>k);
-									viewCol[1] = (TREE_COLOR[1]>>k);
-									viewCol[2] = (TREE_COLOR[2]>>k);
+									viewCol[0] = (TREE_COLOR[0] >> k);
+									viewCol[1] = (TREE_COLOR[1] >> k);
+									viewCol[2] = (TREE_COLOR[2] >> k);
 									viewCol += 3;
 								}
-								viewRow += 3*viewWidth;
+								viewRow += 3 * viewWidth;
 							}
 						}
 					}
 				}
 
-				int gRow = 3*node->row+1;
-				int gCol = 3*node->column+1;
+
+				int gRow = 3 * node->row + 1;
+				int gCol = 3 * node->column + 1;
+
 
 				if (IsPtInRect(gCol, gRow, targetPort))
 				{
-					int viewPixelTop = (gRow-targetPort[2])*zoomFactor+zoomPort[2];
-					int viewPixelLeft = (gCol-targetPort[0])*zoomFactor+zoomPort[0];
+					int viewPixelTop = (gRow - targetPort[2])*zoomFactor + zoomPort[2];
+					int viewPixelLeft = (gCol - targetPort[0])*zoomFactor + zoomPort[0];
 
-					unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-					for (int n = 0;n<zoomFactor;n++)
+
+					unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+					for (int n = 0; n<zoomFactor; n++)
 					{
 						unsigned char *viewCol = viewRow;
-						for (int m = 0;m<zoomFactor;m++)
+						for (int m = 0; m<zoomFactor; m++)
 						{
 							if (node->state == EXPANDED)
 							{
@@ -1504,18 +1783,20 @@ void ImgView::MarkPathTree(void)
 							}
 							viewCol += 3;
 						}
-						viewRow += 3*viewWidth;
+						viewRow += 3 * viewWidth;
 					}
-				}				
+				}
 			}
 		}
 	}
 }
+
 
 void ImgView::MarkPathOnTree(int col, int row)
 {
-	int nodeIndex = row*imgWidth+col;
-	Node *node = nodeBuf+nodeIndex;
+	int nodeIndex = row*imgWidth + col;
+	Node *node = nodeBuf + nodeIndex;
+
 
 	while (node->prevNode)
 	{
@@ -1523,71 +1804,78 @@ void ImgView::MarkPathOnTree(int col, int row)
 		int prevNodeCol = prevNode->column;
 		int prevNodeRow = prevNode->row;
 
+
 		int graphCol[2], graphRow[2];
-		
+
 		if (prevNodeCol<node->column)
 		{
-			graphCol[0] = 3*node->column;
-			graphCol[1] = 3*node->column-1;
+			graphCol[0] = 3 * node->column;
+			graphCol[1] = 3 * node->column - 1;
 		}
 		else if (prevNodeCol>node->column)
 		{
-			graphCol[0] = 3*node->column+2;
-			graphCol[1] = 3*node->column+3;
+			graphCol[0] = 3 * node->column + 2;
+			graphCol[1] = 3 * node->column + 3;
 		}
 		else
 		{
-			graphCol[0] = 3*node->column+1;
-			graphCol[1] = 3*node->column+1;
+			graphCol[0] = 3 * node->column + 1;
+			graphCol[1] = 3 * node->column + 1;
 		}
+
 
 		if (prevNodeRow<node->row)
 		{
-			graphRow[0] = 3*node->row;
-			graphRow[1] = 3*node->row-1;
+			graphRow[0] = 3 * node->row;
+			graphRow[1] = 3 * node->row - 1;
 		}
 		else if (prevNodeRow>node->row)
 		{
-			graphRow[0] = 3*node->row+2;
-			graphRow[1] = 3*node->row+3;
+			graphRow[0] = 3 * node->row + 2;
+			graphRow[1] = 3 * node->row + 3;
 		}
 		else
 		{
-			graphRow[0] = 3*node->row+1;
-			graphRow[1] = 3*node->row+1;
+			graphRow[0] = 3 * node->row + 1;
+			graphRow[1] = 3 * node->row + 1;
 		}
+
 
 		for (int k = 0; k<2; k++)
 		{
 			if (IsPtInRect(graphCol[k], graphRow[k], targetPort))
 			{
-				int viewPixelTop = (graphRow[k]-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (graphCol[k]-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (graphRow[k] - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (graphCol[k] - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
-						viewCol[0] = (SELECTED_PATH_COLOR[0]>>k);
-						viewCol[1] = (SELECTED_PATH_COLOR[1]>>k);
-						viewCol[2] = (SELECTED_PATH_COLOR[2]>>k);
+						viewCol[0] = (SELECTED_PATH_COLOR[0] >> k);
+						viewCol[1] = (SELECTED_PATH_COLOR[1] >> k);
+						viewCol[2] = (SELECTED_PATH_COLOR[2] >> k);
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
 		}
 
+
 		node = prevNode;
 	}
 }
+
 
 void ImgView::UnMarkPathOnTree(int col, int row)
 {
-	int nodeIndex = row*imgWidth+col;
-	Node *node = nodeBuf+nodeIndex;
+	int nodeIndex = row*imgWidth + col;
+	Node *node = nodeBuf + nodeIndex;
+
 
 	while (node->prevNode)
 	{
@@ -1595,125 +1883,144 @@ void ImgView::UnMarkPathOnTree(int col, int row)
 		int prevNodeCol = prevNode->column;
 		int prevNodeRow = prevNode->row;
 
+
 		int graphCol[2], graphRow[2];
-		
+
 		if (prevNodeCol<node->column)
 		{
-			graphCol[0] = 3*node->column;
-			graphCol[1] = 3*node->column-1;
+			graphCol[0] = 3 * node->column;
+			graphCol[1] = 3 * node->column - 1;
 		}
 		else if (prevNodeCol>node->column)
 		{
-			graphCol[0] = 3*node->column+2;
-			graphCol[1] = 3*node->column+3;
+			graphCol[0] = 3 * node->column + 2;
+			graphCol[1] = 3 * node->column + 3;
 		}
 		else
 		{
-			graphCol[0] = 3*node->column+1;
-			graphCol[1] = 3*node->column+1;
+			graphCol[0] = 3 * node->column + 1;
+			graphCol[1] = 3 * node->column + 1;
 		}
+
 
 		if (prevNodeRow<node->row)
 		{
-			graphRow[0] = 3*node->row;
-			graphRow[1] = 3*node->row-1;
+			graphRow[0] = 3 * node->row;
+			graphRow[1] = 3 * node->row - 1;
 		}
 		else if (prevNodeRow>node->row)
 		{
-			graphRow[0] = 3*node->row+2;
-			graphRow[1] = 3*node->row+3;
+			graphRow[0] = 3 * node->row + 2;
+			graphRow[1] = 3 * node->row + 3;
 		}
 		else
 		{
-			graphRow[0] = 3*node->row+1;
-			graphRow[1] = 3*node->row+1;
+			graphRow[0] = 3 * node->row + 1;
+			graphRow[1] = 3 * node->row + 1;
 		}
+
 
 		for (int k = 0; k<2; k++)
 		{
 			if (IsPtInRect(graphCol[k], graphRow[k], targetPort))
 			{
-				int viewPixelTop = (graphRow[k]-targetPort[2])*zoomFactor+zoomPort[2];
-				int viewPixelLeft = (graphCol[k]-targetPort[0])*zoomFactor+zoomPort[0];
+				int viewPixelTop = (graphRow[k] - targetPort[2])*zoomFactor + zoomPort[2];
+				int viewPixelLeft = (graphCol[k] - targetPort[0])*zoomFactor + zoomPort[0];
 
-				unsigned char *viewRow = viewBuf + 3*(viewPixelTop*viewWidth+viewPixelLeft);
-				for (int n = 0;n<zoomFactor;n++)
+
+				unsigned char *viewRow = viewBuf + 3 * (viewPixelTop*viewWidth + viewPixelLeft);
+				for (int n = 0; n<zoomFactor; n++)
 				{
 					unsigned char *viewCol = viewRow;
-					for (int m = 0;m<zoomFactor;m++)
+					for (int m = 0; m<zoomFactor; m++)
 					{
-						viewCol[0] = (TREE_COLOR[0]>>k);
-						viewCol[1] = (TREE_COLOR[1]>>k);
-						viewCol[2] = (TREE_COLOR[2]>>k);
+						viewCol[0] = (TREE_COLOR[0] >> k);
+						viewCol[1] = (TREE_COLOR[1] >> k);
+						viewCol[2] = (TREE_COLOR[2] >> k);
 						viewCol += 3;
 					}
-					viewRow += 3*viewWidth;
+					viewRow += 3 * viewWidth;
 				}
 			}
 		}
+
 
 		node = prevNode;
 	}
 }
 
-void ImgView::AppendCurrentContour(int col,int row)
+
+void ImgView::AppendCurrentContour(int col, int row)
 {
 	// unnecessary way, but to check students' codes.
 
+
 	CTypedPtrDblList <Node> path;
-	MinimumPath(&path,col,row,nodeBuf,imgWidth,imgHeight);
+	MinimumPath(&path, col, row, nodeBuf, imgWidth, imgHeight,minX,minY,maxX,maxY);
 	if (path.GetCount()>1)
 	{
 		Node *node = path.RemoveTail();
 		int imgX = node->column;
 		int imgY = node->row;
 
-		CTypedPtrDblElement <Seed> *seedEle = currentCntr.AddTail(new Seed(imgX,imgY,1));
 
-		while(path.GetCount()>1)
+		CTypedPtrDblElement <Seed> *seedEle = currentCntr.AddTail(new Seed(imgX, imgY, 1));
+
+
+		while (path.GetCount()>1)
 		{
 			node = path.RemoveTail();
 			int imgX = node->column;
 			int imgY = node->row;
 
-			seedEle = currentCntr.AddPrev(seedEle, new Seed(imgX,imgY,0));
+
+			seedEle = currentCntr.AddPrev(seedEle, new Seed(imgX, imgY, 0));
 		}
 	}
 }
 
-void ImgView::FinishCurrentContour(int col,int row)
+
+void ImgView::FinishCurrentContour(int col, int row)
 {
-	AppendCurrentContour(col,row);
+	AppendCurrentContour(col, row);
 	currentCntr.SetCircular(0);
 }
 
+
 void ImgView::FinishCurrentContour(void)
 {
-	Seed *seed = currentCntr.GetHeadPtr()->Data();	
-	AppendCurrentContour(seed->x,seed->y);
+	Seed *seed = currentCntr.GetHeadPtr()->Data();
+	AppendCurrentContour(seed->x, seed->y);
 	//currentCntr.RemoveTail();
 	currentCntr.SetCircular(1);
 }
+
 
 void ImgView::CommitCurrentContour()
 {
 	CTypedPtrDblList <Seed> *newCntr = new CTypedPtrDblList <Seed>;
 
-	while(!currentCntr.IsEmpty())
+
+	while (!currentCntr.IsEmpty())
 	{
 		newCntr->AddTail(currentCntr.RemoveTail());
 	}
 
+
 	newCntr->SetCircular(currentCntr.IsCircular());
+
 
 	contours.AddTail(newCntr);
 }
+
 
 void ImgView::ChopLastSeed(void)
 {
 	currentCntr.RemoveTail();
 
+
 	CTypedPtrDblElement <Seed> *seedEle = currentCntr.GetTailPtr();
+
 
 	while (!currentCntr.IsSentinel(seedEle) && seedEle->Data()->seed == 0)
 	{
@@ -1723,194 +2030,219 @@ void ImgView::ChopLastSeed(void)
 	}
 }
 
+
 int ImgView::IsPtAroundContour(int x, int y, const CTypedPtrDblList <Seed> *cntr) const
 {
 	CTypedPtrDblElement <Seed> *seedEle = cntr->GetHeadPtr();
 
+
 	while (!cntr->IsSentinel(seedEle))
 	{
 		Seed *seed = seedEle->Data();
-		if (abs(seed->x-x)+abs(seed->y-y)<8) return 1;
+		if (abs(seed->x - x) + abs(seed->y - y)<8) return 1;
 		seedEle = seedEle->Next();
 	}
 	return 0;
 }
 
+
 void ImgView::AllocateViewBuffer(int w, int h)
 {
 	viewWidth = w;
 	viewHeight = h;
-	viewBuf = new unsigned char [w*h*3];
+	viewBuf = new unsigned char[w*h * 3];
 }
+
 
 void ImgView::UpdateViewPort(int bufLeft, int bufTop, int bufWidth, int bufHeight)
 {
 	int viewPort[4] = {
-		-((viewWidth/2)/zoomFactor),
-		(viewWidth-viewWidth/2)/zoomFactor,
-		-((viewHeight/2)/zoomFactor),
-		(viewHeight-(viewHeight/2))/zoomFactor
+		-((viewWidth / 2) / zoomFactor),
+		(viewWidth - viewWidth / 2) / zoomFactor,
+		-((viewHeight / 2) / zoomFactor),
+		(viewHeight - (viewHeight / 2)) / zoomFactor
 	};
+
 
 	int bufPort[4] = {
 		bufLeft,
-		bufLeft+bufWidth,
+		bufLeft + bufWidth,
 		bufTop,
-		bufTop+bufHeight
+		bufTop + bufHeight
 	};
+
 
 	int interPort[4];
 
+
 	RectIntersection(interPort, bufPort, viewPort);
+
 
 	targetPort[0] = interPort[0] - bufLeft;
 	targetPort[1] = interPort[1] - bufLeft;
 	targetPort[2] = interPort[2] - bufTop;
 	targetPort[3] = interPort[3] - bufTop;
 
-	zoomPort[0] = interPort[0] * zoomFactor + viewWidth/2;
-	zoomPort[1] = interPort[1] * zoomFactor + viewWidth/2;
-	zoomPort[2] = interPort[2] * zoomFactor + viewHeight/2;
-	zoomPort[3] = interPort[3] * zoomFactor + viewHeight/2;
+
+	zoomPort[0] = interPort[0] * zoomFactor + viewWidth / 2;
+	zoomPort[1] = interPort[1] * zoomFactor + viewWidth / 2;
+	zoomPort[2] = interPort[2] * zoomFactor + viewHeight / 2;
+	zoomPort[3] = interPort[3] * zoomFactor + viewHeight / 2;
 }
+
 
 void ImgView::UpdateViewBuffer(const unsigned char *origBuf, int bufLeft, int bufTop, int bufWidth, int bufHeight)
 {
-	if (imgBuf==NULL) return;
+	if (imgBuf == NULL) return;
+
 
 	UpdateViewPort(bufLeft, bufTop, bufWidth, bufHeight);
+
 
 	//copy origBuf, targetPort
 	//to   viewBuf, zoomPort
 	//each orig Pixel expands by zoomFactor*zoomFactor
 	//other pixels are BK_COLOR;
 
-	int i,j;
+
+	int i, j;
+
 
 	unsigned char *zb = viewBuf;
 
-	if (zoomPort[0]<zoomPort[1]&&zoomPort[2]<zoomPort[3])
+
+	if (zoomPort[0]<zoomPort[1] && zoomPort[2]<zoomPort[3])
 	{
-		for (j=0;j<zoomPort[2];j++)
+		for (j = 0; j<zoomPort[2]; j++)
 		{
-			for (i=0;i<viewWidth;i++)
+			for (i = 0; i<viewWidth; i++)
 			{
-				*zb=BK_COLOR[0];
+				*zb = BK_COLOR[0];
 				zb++;
-				*zb=BK_COLOR[1];
+				*zb = BK_COLOR[1];
 				zb++;
-				*zb=BK_COLOR[2];
+				*zb = BK_COLOR[2];
 				zb++;
 			}
 		}
 
-		const unsigned char *bufRow = origBuf + 3*(targetPort[2]*bufWidth+targetPort[0]);
 
-		for (j=zoomPort[2];j<zoomPort[3];j+=zoomFactor)
+		const unsigned char *bufRow = origBuf + 3 * (targetPort[2] * bufWidth + targetPort[0]);
+
+
+		for (j = zoomPort[2]; j<zoomPort[3]; j += zoomFactor)
 		{
 			for (int n = 0; n<zoomFactor; n++)
 			{
-				for (i=0;i<zoomPort[0];i++)
+				for (i = 0; i<zoomPort[0]; i++)
 				{
-					*zb=BK_COLOR[0];
+					*zb = BK_COLOR[0];
 					zb++;
-					*zb=BK_COLOR[1];
+					*zb = BK_COLOR[1];
 					zb++;
-					*zb=BK_COLOR[2];
+					*zb = BK_COLOR[2];
 					zb++;
+
 
 				}
 
+
 				const unsigned char *bufCol = bufRow;
 
-				for (i=zoomPort[0];i<zoomPort[1];i+=zoomFactor)
+
+				for (i = zoomPort[0]; i<zoomPort[1]; i += zoomFactor)
 				{
 					for (int m = 0; m<zoomFactor; m++)
 					{
-						*zb=bufCol[0];
+						*zb = bufCol[0];
 						zb++;
-						*zb=bufCol[1];
+						*zb = bufCol[1];
 						zb++;
-						*zb=bufCol[2];
+						*zb = bufCol[2];
 						zb++;
 					}
+
 
 					bufCol += 3;
 				}
 
-				for (i=zoomPort[1];i<viewWidth;i++)
+
+				for (i = zoomPort[1]; i<viewWidth; i++)
 				{
-					*zb=BK_COLOR[0];
+					*zb = BK_COLOR[0];
 					zb++;
-					*zb=BK_COLOR[1];
+					*zb = BK_COLOR[1];
 					zb++;
-					*zb=BK_COLOR[2];
+					*zb = BK_COLOR[2];
 					zb++;
 				}
 			}
 
-			bufRow += 3*bufWidth;
+
+			bufRow += 3 * bufWidth;
 		}
 
-		for (j=zoomPort[3];j<viewHeight;j++)
+
+		for (j = zoomPort[3]; j<viewHeight; j++)
 		{
-			for (i=0;i<viewWidth;i++)
+			for (i = 0; i<viewWidth; i++)
 			{
-				*zb=BK_COLOR[0];
+				*zb = BK_COLOR[0];
 				zb++;
-				*zb=BK_COLOR[1];
+				*zb = BK_COLOR[1];
 				zb++;
-				*zb=BK_COLOR[2];
+				*zb = BK_COLOR[2];
 				zb++;
 			}
 		}
 	}
 	else
 	{
-		for (j=0;j<viewHeight;j++)
+		for (j = 0; j<viewHeight; j++)
 		{
-			for (i=0;i<viewWidth;i++)
+			for (i = 0; i<viewWidth; i++)
 			{
-				*zb=BK_COLOR[0];
+				*zb = BK_COLOR[0];
 				zb++;
-				*zb=BK_COLOR[1];
+				*zb = BK_COLOR[1];
 				zb++;
-				*zb=BK_COLOR[2];
+				*zb = BK_COLOR[2];
 				zb++;
 			}
 		}
 	}
 }
 
+
 void ImgView::UpdateViewBuffer(void)
 {
 	if (drawMode == IMAGE_ONLY)
 	{
-		UpdateViewBuffer(curImgChar,imgLeft,imgTop,imgWidth,imgHeight);				
+		UpdateViewBuffer(curImgChar, imgLeft, imgTop, imgWidth, imgHeight);
 	}
-	else if (drawMode == IMAGE_WITH_CONTOUR )
+	else if (drawMode == IMAGE_WITH_CONTOUR)
 	{
-		UpdateViewBuffer(curImgChar,imgLeft,imgTop,imgWidth,imgHeight);				
+		UpdateViewBuffer(curImgChar, imgLeft, imgTop, imgWidth, imgHeight);
 		if (currentCntr.IsEmpty())
 		{
-			MarkAllContour();			
+			MarkAllContour();
 		}
 		else
 		{
-			MarkAllContour(freePtX,freePtY);
+			MarkAllContour(freePtX, freePtY);
 		}
 	}
 	else if (drawMode == GRAPH_WITH_COLOR)
 	{
-		UpdateViewBuffer(pixelNodes,3*imgLeft,3*imgTop,graphWidth,graphHeight);
+		UpdateViewBuffer(pixelNodes, 3 * imgLeft, 3 * imgTop, graphWidth, graphHeight);
 	}
 	else if (drawMode == GRAPH_WITH_COST)
-	{		
-		UpdateViewBuffer(costGraph,3*imgLeft,3*imgTop,graphWidth,graphHeight);
+	{
+		UpdateViewBuffer(costGraph, 3 * imgLeft, 3 * imgTop, graphWidth, graphHeight);
 	}
 	else if (drawMode == GRAPH_WITH_TREE)
 	{
-		UpdateViewBuffer(pixelNodes,3*imgLeft,3*imgTop,graphWidth,graphHeight);
+		UpdateViewBuffer(pixelNodes, 3 * imgLeft, 3 * imgTop, graphWidth, graphHeight);
 		if (!currentCntr.IsEmpty())
 		{
 			MarkPathTree();
@@ -1918,139 +2250,166 @@ void ImgView::UpdateViewBuffer(void)
 	}
 	else if (drawMode == GRAPH_WITH_PATH)
 	{
-		UpdateViewBuffer(pixelNodes,3*imgLeft,3*imgTop,graphWidth,graphHeight);
+		UpdateViewBuffer(pixelNodes, 3 * imgLeft, 3 * imgTop, graphWidth, graphHeight);
 		if (!currentCntr.IsEmpty())
 		{
-			MarkPathTree();	
-			MarkPathOnTree(freePtX,freePtY);
+			MarkPathTree();
+			MarkPathOnTree(freePtX, freePtY);
 		}
 	}
 }
+
 
 void ImgView::resize(int x, int y, int w, int h)
 {
 	if (imgBuf)
 	{
-		AllocateViewBuffer(w,h);
-		UpdateViewBuffer();	
+		AllocateViewBuffer(w, h);
+		UpdateViewBuffer();
 		redraw();
 	}
 
-	Fl_Double_Window::resize(x,y,w,h);
+
+	Fl_Double_Window::resize(x, y, w, h);
 }
 
+
 int ImgView::handle(int c)
-{	
-	if (c==FL_PUSH)
+{
+	if (c == FL_PUSH)
 	{
 		int x = Fl::event_x();
 		int y = Fl::event_y();
+
 
 		if (imgBuf)
 		{
 			if (Fl::event_button() == FL_LEFT_MOUSE)
 			{
-				if ((Fl::get_key(FL_Control_L)||Fl::get_key(FL_Control_R))
-					 && drawMode == IMAGE_WITH_CONTOUR)
+				if ((Fl::get_key(FL_Control_L) || Fl::get_key(FL_Control_R))
+					&& drawMode == IMAGE_WITH_CONTOUR)
 				{
-					int col = (x-zoomPort[0])/zoomFactor+targetPort[0];
-					int row = (y-zoomPort[2])/zoomFactor+targetPort[2];
+					int col = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+					int row = (y - zoomPort[2]) / zoomFactor + targetPort[2];
 
-					if (IsPtInRect(col,row,targetPort))
+
+					if (IsPtInRect(col, row, targetPort))
 					{
 						if (!currentCntr.IsEmpty())
 						{
-							UnMarkPath(freePtX,freePtY);
+							UnMarkPath(freePtX, freePtY);
 							UnMarkCurrentContour();
 							currentCntr.RemoveAll();
 						}
-						
+
 						currentCntr.SetCircular(0);
 						int oldCol = col;
 						int oldRow = row;
-						SeedSnap(col,row,imgBuf,imgWidth,imgHeight);
-						if (!IsPtInRect(col,row,targetPort))
+						SeedSnap(col, row, imgBuf, imgWidth, imgHeight);
+						if (!IsPtInRect(col, row, targetPort))
 						{
 							printf("the result of SeedSnap is out of current view port, still use un-snapped seed!\n");
 							col = oldCol;
 							row = oldRow;
 						}
-						Seed *seed = new Seed(col,row,1); 
+						Seed *seed = new Seed(col, row, 1);
 						currentCntr.AddTail(seed);
+
 
 						selectedCntr = -1;
 
+
 						MarkAllContour();
 
-						printf("current seed position: ( %4d , %4d ).\n",col,row);
 
-						int seedIndex = row*imgWidth+col;
+						printf("current seed position: ( %4d , %4d ).\n", col, row);
+
+
+						int seedIndex = row*imgWidth + col;
+
 
 						if (brushSelPtr == brushSelection && !brushSelection[seedIndex])
 						{
-							printf("current seed ( %d , %d ) is out of brush selected range!\n",col,row);
+							printf("current seed ( %d , %d ) is out of brush selected range!\n", col, row);
 						}
+
 
 						LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, imgWidth*imgHeight);
 
+
 						printf("minimun path tree is finished\n");
+
 
 						freePtX = col;
 						freePtY = row;
+
 
 						redraw();
 					}
 				}
 				else if (currentCntr.GetCount() && drawMode == IMAGE_WITH_CONTOUR)
 				{
-					int col = (x-zoomPort[0])/zoomFactor+targetPort[0];
-					int row = (y-zoomPort[2])/zoomFactor+targetPort[2];
+					int col = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+					int row = (y - zoomPort[2]) / zoomFactor + targetPort[2];
 
-					if (IsPtInRect(col,row,targetPort))
+
+					if (IsPtInRect(col, row, targetPort))
 					{
 
-						UnMarkPath(freePtX,freePtY);
 
-						AppendCurrentContour(col,row); //must be called before LiveWireDP;
+						UnMarkPath(freePtX, freePtY);
+
+
+						AppendCurrentContour(col, row); //must be called before LiveWireDP;
 						MarkAllContour();
 
-						printf("current seed position: ( %4d , %4d ).\n",col,row);
 
-						int seedIndex = row*imgWidth+col;
+						printf("current seed position: ( %4d , %4d ).\n", col, row);
+
+
+						int seedIndex = row*imgWidth + col;
+
 
 						if (brushSelPtr == brushSelection && !brushSelection[seedIndex])
 						{
-							printf("current seed ( %d , %d ) is out of brush selected range!\n",col,row);
+							printf("current seed ( %d , %d ) is out of brush selected range!\n", col, row);
 						}
 
+
 						LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, imgWidth*imgHeight);
+
 
 						freePtX = col;
 						freePtY = row;
 
+
 						printf("minimun path tree is finished\n");
+
 
 						redraw();
 					}
 				}
-				else if (currentCntr.IsEmpty() && (drawMode == IMAGE_WITH_CONTOUR || drawMode == IMAGE_ONLY) )
+				else if (currentCntr.IsEmpty() && (drawMode == IMAGE_WITH_CONTOUR || drawMode == IMAGE_ONLY))
 				{
 					// apply brush here.
-					int cntX = (x-zoomPort[0])/zoomFactor+targetPort[0];
-					int cntY = (y-zoomPort[2])/zoomFactor+targetPort[2];
+					int cntX = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+					int cntY = (y - zoomPort[2]) / zoomFactor + targetPort[2];
+
 
 					//int i,j;
 
+
 					/********************EXTRA CREDITS********************
-					 * apply brush here, e.g., updating imgBuf by attenuating origImg with brushOpacity,
-					 * and update brushSelection here also.
-					 */
+					* apply brush here, e.g., updating imgBuf by attenuating origImg with brushOpacity,
+					* and update brushSelection here also.
+					*/
 					for (int i = -brushSize; i < brushSize + 1; ++i)
 					{
 						for (int j = -brushSize; j < brushSize + 1; ++j)
 						{
 							if (i*i + j*j <= brushRadius2) {
 								brushSelection[(cntY + j)*imgWidth + cntX + i] = 1;
+
 
 							}
 						}
@@ -2061,65 +2420,76 @@ int ImgView::handle(int c)
 					UpdateViewBuffer();
 					redraw();
 
+
 				}
 			}
 		}
 
+
 		mouseX = x;
 		mouseY = y;
 
+
 		return 1;
 	}
-	else if (c==FL_MOVE)
+	else if (c == FL_MOVE)
 	{
 		int x = Fl::event_x();
 		int y = Fl::event_y();
 
-		unsigned char pixel[3] = {BK_COLOR[0],BK_COLOR[1],BK_COLOR[2]};
-		if (imgBuf && 0<=x && x<viewWidth
-			&& 0<=y && y<viewHeight)
+
+		unsigned char pixel[3] = { BK_COLOR[0],BK_COLOR[1],BK_COLOR[2] };
+		if (imgBuf && 0 <= x && x<viewWidth
+			&& 0 <= y && y<viewHeight)
 		{
-			memcpy(pixel,viewBuf+3*(y*viewWidth+x),3*sizeof(unsigned char));
+			memcpy(pixel, viewBuf + 3 * (y*viewWidth + x), 3 * sizeof(unsigned char));
 		}
 
+
 		char info[256];
-		sprintf(info,"x = %d y = %d r = %d g = %d b = %d",
-			x,y,(int)pixel[0],(int)pixel[1],(int)pixel[2]);
+		sprintf(info, "x = %d y = %d r = %d g = %d b = %d",
+			x, y, (int)pixel[0], (int)pixel[1], (int)pixel[2]);
 		mouseInfo->value(info);
+
 
 		if (imgBuf)
 		{
 			if (drawMode == IMAGE_WITH_CONTOUR)
 			{
-				int col = (x-zoomPort[0])/zoomFactor+targetPort[0];
-				int row = (y-zoomPort[2])/zoomFactor+targetPort[2];
+				int col = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+				int row = (y - zoomPort[2]) / zoomFactor + targetPort[2];
 
-				if (IsPtInRect(col,row,targetPort))
+
+				if (IsPtInRect(col, row, targetPort))
 				{
 					if (currentCntr.GetCount())
 					{
-						UnMarkPath(freePtX,freePtY);
+						UnMarkPath(freePtX, freePtY);
 						MarkAllContour(col, row);
+
 
 						freePtX = col;
 						freePtY = row;
+
 
 						redraw();
 					}
 					else
 					{
-						for (int k = 0;k<contours.GetSize();k++)
+						for (int k = 0; k<contours.GetSize(); k++)
 						{
-							if (IsPtAroundContour(col,row,contours[k]))
+							if (IsPtAroundContour(col, row, contours[k]))
 							{
-								if (0<=selectedCntr && selectedCntr < contours.GetSize())
+								if (0 <= selectedCntr && selectedCntr < contours.GetSize())
 								{
-									MarkPath(contours[selectedCntr],PATH_COLOR);
+									MarkPath(contours[selectedCntr], PATH_COLOR);
 								}
-								MarkPath(contours[k],SELECTED_PATH_COLOR);
+								MarkPath(contours[k], SELECTED_PATH_COLOR);
+
 
 								selectedCntr = k;
 								redraw();
+
 
 								break;
 							}
@@ -2129,106 +2499,121 @@ int ImgView::handle(int c)
 			}
 			else if (drawMode == GRAPH_WITH_PATH)
 			{
-				int col = (x-zoomPort[0])/zoomFactor+targetPort[0];
-				int row = (y-zoomPort[2])/zoomFactor+targetPort[2];
-				col/=3;
-				row/=3;
+				int col = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+				int row = (y - zoomPort[2]) / zoomFactor + targetPort[2];
+				col /= 3;
+				row /= 3;
+
 
 				if (currentCntr.GetCount())
 				{
-					UnMarkPathOnTree(freePtX,freePtY);
+					UnMarkPathOnTree(freePtX, freePtY);
 					MarkPathOnTree(col, row);
 					freePtX = col;
 					freePtY = row;
 
+
 					redraw();
 				}
 			}
 		}
 
+
 		mouseX = x;
 		mouseY = y;
 
+
 		return 1;
-	}	
-	else if (c==FL_DRAG)
+	}
+	else if (c == FL_DRAG)
 	{
 		int x = Fl::event_x();
 		int y = Fl::event_y();
 
-		if (Fl::event_button()==FL_RIGHT_MOUSE)
+
+		if (Fl::event_button() == FL_RIGHT_MOUSE)
 		{
 			if (imgBuf)
 			{
-				imgLeft += (x - mouseX)/zoomFactor;
-				imgTop += (y - mouseY)/zoomFactor;
+				imgLeft += (x - mouseX) / zoomFactor;
+				imgTop += (y - mouseY) / zoomFactor;
 
-				UpdateViewBuffer();		
+
+				UpdateViewBuffer();
 				//MarkAllContour(freePtX,freePtY);
-				
+
 				redraw();
 			}
 		}
-		else if (Fl::event_button()==FL_LEFT_MOUSE)
+		else if (Fl::event_button() == FL_LEFT_MOUSE)
 		{
-			if (drawMode == IMAGE_ONLY || drawMode == IMAGE_WITH_CONTOUR )
-			{				
+			if (drawMode == IMAGE_ONLY || drawMode == IMAGE_WITH_CONTOUR)
+			{
 				if (currentCntr.IsEmpty())
 				{
-					int cntX = (x-zoomPort[0])/zoomFactor+targetPort[0];
-					int cntY = (y-zoomPort[2])/zoomFactor+targetPort[2];
+					int cntX = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+					int cntY = (y - zoomPort[2]) / zoomFactor + targetPort[2];
+
 
 					//int i,j;
 
+
 					/********************EXTRA CREDITS********************
-					 * apply brush here, e.g., updating imgBuf by attenuating origImg with brushOpacity,
-					 * and update brushSelection here also.
-					 */
+					* apply brush here, e.g., updating imgBuf by attenuating origImg with brushOpacity,
+					* and update brushSelection here also.
+					*/
+
 
 					printf("selecting region by brush: to be implemented in imgView.cpp\n");
 					/******************************************************/
 
+
 					UpdateViewBuffer();
 					redraw();
 				}
-			}			
+			}
 		}
 
-		mouseX = x;
-		mouseY = y;
-
-		return 1;
-	}
-	else if (c==FL_RELEASE)
-	{
-		int x = Fl::event_x();
-		int y = Fl::event_y();
 
 		mouseX = x;
 		mouseY = y;
 
+
 		return 1;
 	}
-	else if (c==FL_SHORTCUT)	
+	else if (c == FL_RELEASE)
 	{
 		int x = Fl::event_x();
 		int y = Fl::event_y();
 
-		if (Fl::event_key('=') && (Fl::get_key(FL_Control_L)||Fl::get_key(FL_Control_R)) )
+
+		mouseX = x;
+		mouseY = y;
+
+
+		return 1;
+	}
+	else if (c == FL_SHORTCUT)
+	{
+		int x = Fl::event_x();
+		int y = Fl::event_y();
+
+
+		if (Fl::event_key('=') && (Fl::get_key(FL_Control_L) || Fl::get_key(FL_Control_R)))
 		{
 			if (zoomFactor < 16)
 			{
-				zoomFactor ++;
-				UpdateViewBuffer();				
+				zoomFactor++;
+				UpdateViewBuffer();
 				redraw();
 			}
 			return 1;
 		}
-		else if (Fl::event_key('-') && (Fl::get_key(FL_Control_L)||Fl::get_key(FL_Control_R)) )
+		else if (Fl::event_key('-') && (Fl::get_key(FL_Control_L) || Fl::get_key(FL_Control_R)))
 		{
 			if (zoomFactor > 1)
 			{
-				zoomFactor --;
+				zoomFactor--;
 				UpdateViewBuffer();
 				redraw();
 			}
@@ -2238,27 +2623,32 @@ int ImgView::handle(int c)
 		{
 			if (drawMode == IMAGE_WITH_CONTOUR && currentCntr.GetCount())
 			{
-				int col = (x-zoomPort[0])/zoomFactor+targetPort[0];
-				int row = (y-zoomPort[2])/zoomFactor+targetPort[2];
+				int col = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+				int row = (y - zoomPort[2]) / zoomFactor + targetPort[2];
 
-				if (IsPtInRect(col,row,targetPort))
+
+				if (IsPtInRect(col, row, targetPort))
 				{
-					UnMarkPath(freePtX,freePtY);
-						
-					if (Fl::get_key(FL_Control_L)||Fl::get_key(FL_Control_R))
+					UnMarkPath(freePtX, freePtY);
+
+					if (Fl::get_key(FL_Control_L) || Fl::get_key(FL_Control_R))
 					{
 						FinishCurrentContour();
 					}
-					else 
+					else
 					{
-						FinishCurrentContour(col,row);
+						FinishCurrentContour(col, row);
 					}
+
 
 					CommitCurrentContour();
 
-					selectedCntr = contours.GetSize()-1;
+
+					selectedCntr = contours.GetSize() - 1;
+
 
 					MarkAllContour();
+
 
 					redraw();
 				}
@@ -2271,46 +2661,51 @@ int ImgView::handle(int c)
 			{
 				if (currentCntr.GetCount())
 				{
-					UnMarkPath(freePtX,freePtY);
+					UnMarkPath(freePtX, freePtY);
 					UnMarkCurrentContour();
 
+
 					ChopLastSeed();
+
 
 					if (currentCntr.GetCount())
 					{
 						Seed *lastSeed = currentCntr.GetTailPtr()->Data();
 						int col = lastSeed->x;
 						int row = lastSeed->y;
-						int seedIndex = row*imgWidth+col;
+						int seedIndex = row*imgWidth + col;
+
 
 						if (brushSelPtr == brushSelection && !brushSelection[seedIndex])
 						{
-							printf("current seed ( %d , %d ) is out of brush selected range!\n",col,row);
+							printf("current seed ( %d , %d ) is out of brush selected range!\n", col, row);
 						}
-	
+
 						LiveWireDP(col, row, nodeBuf, imgWidth, imgHeight, brushSelPtr, imgWidth*imgHeight);
 
-						freePtX = (x-zoomPort[0])/zoomFactor+targetPort[0];
-						freePtY = (y-zoomPort[2])/zoomFactor+targetPort[2];
-						
+
+						freePtX = (x - zoomPort[0]) / zoomFactor + targetPort[0];
+						freePtY = (y - zoomPort[2]) / zoomFactor + targetPort[2];
+
 						printf("minimun path tree is finished\n");
 
-						MarkAllContour(freePtX,freePtY);
+
+						MarkAllContour(freePtX, freePtY);
 					}
 					else
 					{
 						MarkAllContour();
 					}
-					
+
 					redraw();
 				}
-				else 
+				else
 				{
-					if (0<=selectedCntr && selectedCntr<contours.GetSize())
+					if (0 <= selectedCntr && selectedCntr<contours.GetSize())
 					{
 						UnMarkPath(contours[selectedCntr]);
 						CTypedPtrDblList <Seed> *oldCntr = contours[selectedCntr];
-						contours[selectedCntr] = contours[contours.GetSize()-1];
+						contours[selectedCntr] = contours[contours.GetSize() - 1];
 						contours.RemoveTail();
 						oldCntr->FreePtrs();
 						delete oldCntr;
@@ -2318,6 +2713,7 @@ int ImgView::handle(int c)
 						MarkAllContour();
 						redraw();
 					}
+
 
 				}
 			}
@@ -2332,12 +2728,14 @@ int ImgView::handle(int c)
 	}
 }
 
+
 void ImgView::draw(void)
 {
 	//fl_rectf(0,0,w(),h(),BK_COLOR[0],BK_COLOR[1],BK_COLOR[2]);
 
+
 	if (imgBuf)
-	{		
+	{
 		fl_draw_image(viewBuf, 0, 0, viewWidth, viewHeight, 3, 0);
 	}
 	else
@@ -2346,7 +2744,12 @@ void ImgView::draw(void)
 	}
 }
 
+
 void ImgView::AboutMe(void)
 {
 	helpPageUI->show();
 }
+
+
+
+
