@@ -2,11 +2,8 @@ These files contain the major functions changed and used in this project
 
 BrushConfigUI.cpp - Defines the UI for setting the points for the Bezier Curve to scale the image
 
-correlation.cpp - Contains filter function to run cross correlation on the picture, which will be used to define
-costs between pixels where the least cost is the highest difference of surrounding pixel colors.
+correlation.cpp - Contains filter function to run cross correlation on the picture, which will be used to define costs between pixels where the least cost is the highest difference of surrounding pixel colors.
 
-iScissor.cpp - sets up data structures for calculations and uses Dijkstras algorithm to find the least cost path
-from the starting pixel to the current pixel
+iScissor.cpp - sets up data structures for calculations and uses Dijkstras algorithm to find the least cost path from the starting pixel to the current pixel
 
-ImgView.cpp-  void ImgView::SaveMask(const char *filename) uses the points defined for the bezier curve to save
-and scale the image 
+ImgView.cpp-  void ImgView::SaveMask(const char *filename) uses the points defined for the bezier curve to save and scale the image 
